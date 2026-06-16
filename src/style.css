@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* ── Design Tokens ── */
+:root {
+  /* Brand */
+  --brand: #7c3aed;
+  --brand-light: #a78bfa;
+  --brand-subtle: rgba(124, 58, 237, 0.12);
+  --brand-glow: rgba(124, 58, 237, 0.35);
+  --gradient-brand: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  --gradient-text: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
+
+  /* Backgrounds */
+  --bg-primary: #0f0f13;
+  --bg-gradient: radial-gradient(ellipse at top left, #1a103a 0%, #0f0f13 60%);
+  --sidebar-bg: #13131a;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+
+  /* Cards */
+  --card-bg: rgba(255, 255, 255, 0.04);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  --float-card-bg: rgba(30, 20, 60, 0.85);
+
+  /* Inputs */
+  --input-bg: rgba(255, 255, 255, 0.05);
+  --input-border: rgba(255, 255, 255, 0.1);
+
+  /* Navigation */
+  --nav-hover: rgba(255, 255, 255, 0.06);
+
+  /* Text */
+  --text-primary: #f1f0f5;
+  --text-secondary: #c4bfd8;
+  --text-muted: #7a7590;
+
+  /* Status */
+  --error: #f87171;
+  --success: #4ade80;
+}
+
+/* ── Reset & Base ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* ── Typography ── */
+h1, h2, h3, h4, h5, h6 {
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 2px solid var(--brand-light);
+  outline-offset: 2px;
+}
