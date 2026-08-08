@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { authService, type LoginCredentials } from '@/services/auth.service'
+import { authService, type LoginCredentials, type RegisterCompanyPayload } from '@/services/auth.service'
 import router from '@/router'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -21,10 +21,18 @@ export const useAuthStore = defineStore('auth', () => {
     router.push('/')
   }
 
+  async function register(payload: RegisterCompanyPayload) {
+    const response = await authService.registerCompany(payload)
+    token.value = response.access_token
+    localStorage.setItem('token', response.access_token)
+    await router.push('/dashboard')
+  }
+
   return {
     token,
     isAuthenticated,
     login,
     logout,
+    register,
   }
 })

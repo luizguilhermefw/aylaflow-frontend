@@ -1,15 +1,73 @@
 <template>
   <AuthLayout>
-    <div class="login-card">
+    <div class="login-card register-card">
       <div class="login-header">
         <div class="logo">
           <span class="logo-icon">⚡</span>
           <span class="logo-text">AylaFlow</span>
         </div>
-        <p class="subtitle">Acesse sua conta para continuar</p>
+        <p class="subtitle">Crie sua conta para começar</p>
       </div>
 
-      <form class="login-form" @submit.prevent="handleLogin" novalidate>
+      <form class="login-form" @submit.prevent="handleRegister" novalidate>
+
+        <!-- Company Name -->
+        <div class="field">
+          <label for="name">Nome da Empresa</label>
+          <div class="input-wrapper" :class="{ 'input-error': errors.name }">
+            <span class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 21v-4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v4"/></svg>
+            </span>
+            <input
+              id="name"
+              v-model="form.name"
+              type="text"
+              placeholder="Minha Empresa Ltda"
+              :disabled="loading"
+            />
+          </div>
+          <span v-if="errors.name" class="error-msg">{{ errors.name }}</span>
+        </div>
+
+        <!-- CNPJ -->
+        <div class="field">
+          <label for="cnpj">CNPJ</label>
+          <div class="input-wrapper" :class="{ 'input-error': errors.cnpj }">
+            <span class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M3 9h18"/><path d="M9 15h6"/></svg>
+            </span>
+            <input
+              id="cnpj"
+              v-model="form.cnpj"
+              type="text"
+              placeholder="00.000.000/0000-00"
+              :disabled="loading"
+              @input="formatCnpj"
+              maxlength="18"
+            />
+          </div>
+          <span v-if="errors.cnpj" class="error-msg">{{ errors.cnpj }}</span>
+        </div>
+
+        <!-- UserName -->
+        <div class="field">
+          <label for="userName">Seu Nome</label>
+          <div class="input-wrapper" :class="{ 'input-error': errors.userName }">
+            <span class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </span>
+            <input
+              id="userName"
+              v-model="form.userName"
+              type="text"
+              placeholder="João da Silva"
+              :disabled="loading"
+            />
+          </div>
+          <span v-if="errors.userName" class="error-msg">{{ errors.userName }}</span>
+        </div>
+
+        <!-- Email -->
         <div class="field">
           <label for="email">E-mail</label>
           <div class="input-wrapper" :class="{ 'input-error': errors.email }">
@@ -28,6 +86,7 @@
           <span v-if="errors.email" class="error-msg">{{ errors.email }}</span>
         </div>
 
+        <!-- Password -->
         <div class="field">
           <label for="password">Senha</label>
           <div class="input-wrapper" :class="{ 'input-error': errors.password }">
@@ -39,7 +98,7 @@
               v-model="form.password"
               :type="showPassword ? 'text' : 'password'"
               placeholder="••••••••"
-              autocomplete="current-password"
+              autocomplete="new-password"
               :disabled="loading"
             />
             <button type="button" class="toggle-password" @click="showPassword = !showPassword" :aria-label="showPassword ? 'Ocultar senha' : 'Mostrar senha'">
@@ -50,6 +109,29 @@
           <span v-if="errors.password" class="error-msg">{{ errors.password }}</span>
         </div>
 
+        <!-- Confirm Password -->
+        <div class="field">
+          <label for="confirmPassword">Confirmar senha</label>
+          <div class="input-wrapper" :class="{ 'input-error': errors.confirmPassword }">
+            <span class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </span>
+            <input
+              id="confirmPassword"
+              v-model="form.confirmPassword"
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="••••••••"
+              autocomplete="new-password"
+              :disabled="loading"
+            />
+            <button type="button" class="toggle-password" @click="showPassword = !showPassword" :aria-label="showPassword ? 'Ocultar senha' : 'Mostrar senha'">
+              <svg v-if="!showPassword" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+            </button>
+          </div>
+          <span v-if="errors.confirmPassword" class="error-msg">{{ errors.confirmPassword }}</span>
+        </div>
+
         <transition name="fade">
           <div v-if="serverError" class="alert alert-error" role="alert">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
@@ -58,19 +140,19 @@
         </transition>
 
         <button
-          id="btn-login"
+          id="btn-register"
           type="submit"
           class="btn-primary"
           :class="{ loading }"
           :disabled="loading"
         >
-          <span v-if="!loading">Entrar</span>
+          <span v-if="!loading">Criar conta</span>
           <span v-else class="spinner" aria-hidden="true" />
         </button>
 
         <div class="footer-links">
-          <span class="text-muted">Ainda não tem conta?</span>
-          <RouterLink to="/register" class="link">Criar conta</RouterLink>
+          <span class="text-muted">Já tem uma conta?</span>
+          <RouterLink to="/" class="link">Fazer login</RouterLink>
         </div>
       </form>
     </div>
@@ -87,23 +169,73 @@ import { RouterLink } from 'vue-router'
 const authStore = useAuthStore()
 
 const form = reactive({
+  name: '',
+  cnpj: '',
+  userName: '',
   email: '',
   password: '',
+  confirmPassword: '',
 })
 
 const errors = reactive({
+  name: '',
+  cnpj: '',
+  userName: '',
   email: '',
   password: '',
+  confirmPassword: '',
 })
 
 const serverError = ref('')
 const loading = ref(false)
 const showPassword = ref(false)
 
+function formatCnpj(event: Event) {
+  const input = event.target as HTMLInputElement
+  let value = input.value.replace(/\D/g, '')
+
+  if (value.length > 14) value = value.slice(0, 14)
+
+  // Format as 00.000.000/0000-00
+  if (value.length > 12) {
+    value = value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/, '$1.$2.$3/$4-$5')
+  } else if (value.length > 8) {
+    value = value.replace(/^(\d{2})(\d{3})(\d{3})(\d{1,4}).*/, '$1.$2.$3/$4')
+  } else if (value.length > 5) {
+    value = value.replace(/^(\d{2})(\d{3})(\d{1,3}).*/, '$1.$2.$3')
+  } else if (value.length > 2) {
+    value = value.replace(/^(\d{2})(\d{1,3}).*/, '$1.$2')
+  }
+
+  form.cnpj = value
+}
+
 function validate(): boolean {
-  errors.email = ''
-  errors.password = ''
+  // Reset errors
+  Object.keys(errors).forEach(key => {
+    errors[key as keyof typeof errors] = ''
+  })
+
   let valid = true
+
+  if (!form.name.trim()) {
+    errors.name = 'O nome da empresa é obrigatório.'
+    valid = false
+  }
+
+  const cleanCnpj = form.cnpj.replace(/\D/g, '')
+  if (!cleanCnpj) {
+    errors.cnpj = 'O CNPJ é obrigatório.'
+    valid = false
+  } else if (cleanCnpj.length !== 14) {
+    errors.cnpj = 'O CNPJ deve ter 14 dígitos válidos.'
+    valid = false
+  }
+
+  if (!form.userName.trim()) {
+    errors.userName = 'O nome de usuário é obrigatório.'
+    valid = false
+  }
 
   if (!form.email) {
     errors.email = 'O e-mail é obrigatório.'
@@ -121,22 +253,39 @@ function validate(): boolean {
     valid = false
   }
 
+  if (!form.confirmPassword) {
+    errors.confirmPassword = 'A confirmação de senha é obrigatória.'
+    valid = false
+  } else if (form.confirmPassword !== form.password) {
+    errors.confirmPassword = 'As senhas não coincidem.'
+    valid = false
+  }
+
   return valid
 }
 
-async function handleLogin() {
+async function handleRegister() {
   serverError.value = ''
   if (!validate()) return
 
   loading.value = true
   try {
-    await authStore.login({ email: form.email, password: form.password })
+    const payload = {
+      name: form.name.trim(),
+      cnpj: form.cnpj.replace(/\D/g, ''),
+      userName: form.userName.trim(),
+      email: form.email.trim(),
+      password: form.password
+    }
+
+    await authStore.register(payload)
   } catch (err) {
-    const axiosErr = err as AxiosError<{ message: string }>
-    if (axiosErr.response?.status === 401) {
-      serverError.value = 'E-mail ou senha inválidos.'
+    const axiosErr = err as AxiosError<{ message: string | string[] }>
+    if (axiosErr.response?.data?.message) {
+      const msg = axiosErr.response.data.message
+      serverError.value = Array.isArray(msg) ? msg.join(', ') : msg
     } else {
-      serverError.value = 'Erro ao conectar com o servidor. Tente novamente.'
+      serverError.value = 'Erro ao criar conta. Tente novamente mais tarde.'
     }
   } finally {
     loading.value = false
@@ -147,7 +296,7 @@ async function handleLogin() {
 <style scoped>
 .login-card {
   width: 100%;
-  max-width: 420px;
+  max-width: 460px; /* Slightly wider to accommodate more fields better */
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 20px;
@@ -155,6 +304,7 @@ async function handleLogin() {
   box-shadow: var(--card-shadow);
   backdrop-filter: blur(20px);
   animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  margin: 2rem 0;
 }
 
 .login-header {
@@ -334,26 +484,6 @@ input:disabled {
   animation: spin 0.7s linear infinite;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-  transform: translateY(-6px);
-}
-
 .footer-links {
   display: flex;
   align-items: center;
@@ -376,5 +506,25 @@ input:disabled {
 
 .link:hover {
   color: #c084fc;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 </style>
