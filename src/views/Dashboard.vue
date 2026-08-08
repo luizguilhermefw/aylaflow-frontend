@@ -1,53 +1,11 @@
 <template>
-  <div class="dashboard-layout">
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="sidebar-logo">
-        <span class="logo-icon">⚡</span>
-        <span class="logo-text">AylaFlow</span>
-      </div>
-
-      <nav class="sidebar-nav" aria-label="Navegação principal">
-        <a href="#" class="nav-item active" id="nav-dashboard" aria-current="page">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
-          Dashboard
-        </a>
-        <a href="#" class="nav-item" id="nav-automations">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
-          Automações
-        </a>
-        <a href="#" class="nav-item" id="nav-contacts">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Contatos
-        </a>
-        <a href="#" class="nav-item" id="nav-reports">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
-          Relatórios
-        </a>
-      </nav>
-
-      <div class="sidebar-footer">
-        <button id="btn-logout" class="logout-btn" @click="handleLogout" aria-label="Sair da conta">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
-          Sair
-        </button>
-      </div>
-    </aside>
-
-    <!-- Main Content -->
-    <main class="main-content">
-      <header class="topbar">
-        <div>
-          <h1 class="page-title">Dashboard</h1>
-          <p class="page-subtitle">Visão geral das suas automações</p>
-        </div>
-        <div class="topbar-actions">
-          <button id="btn-new-automation" class="btn-action">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
-            Nova Automação
-          </button>
-        </div>
-      </header>
+  <AppLayout title="Dashboard" subtitle="Visão geral das suas automações">
+    <template #actions>
+      <button id="btn-new-automation" class="btn-action">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+        Nova Automação
+      </button>
+    </template>
 
       <!-- Welcome Banner -->
       <div class="welcome-banner">
@@ -123,156 +81,14 @@
         <p>Crie sua primeira automação e comece a recuperar clientes inativos automaticamente.</p>
         <button id="btn-create-first" class="btn-action">Criar automação</button>
       </div>
-    </main>
-  </div>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from '@/store/auth.store'
-
-const authStore = useAuthStore()
-
-function handleLogout() {
-  authStore.logout()
-}
+import AppLayout from '@/layouts/AppLayout.vue'
 </script>
 
 <style scoped>
-.dashboard-layout {
-  display: flex;
-  min-height: 100vh;
-  background: var(--bg-primary);
-}
-
-/* ── Sidebar ── */
-.sidebar {
-  width: 240px;
-  flex-shrink: 0;
-  background: var(--sidebar-bg);
-  border-right: 1px solid var(--sidebar-border);
-  display: flex;
-  flex-direction: column;
-  padding: 1.5rem 0;
-  position: fixed;
-  height: 100vh;
-  top: 0;
-  left: 0;
-  z-index: 10;
-}
-
-.sidebar-logo {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0 1.25rem 1.75rem;
-  border-bottom: 1px solid var(--sidebar-border);
-}
-
-.logo-icon { font-size: 1.4rem; filter: drop-shadow(0 0 6px #7c3aed88); }
-.logo-text {
-  font-size: 1.2rem;
-  font-weight: 800;
-  background: var(--gradient-text);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.sidebar-nav {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 1.25rem 0.75rem;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 0.875rem;
-  border-radius: 10px;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 0.875rem;
-  font-weight: 500;
-  transition: background 0.15s, color 0.15s;
-}
-
-.nav-item:hover {
-  background: var(--nav-hover);
-  color: var(--text-primary);
-}
-
-.nav-item.active {
-  background: var(--brand-subtle);
-  color: var(--brand-light);
-  font-weight: 600;
-}
-
-.sidebar-footer {
-  padding: 0 0.75rem;
-  border-top: 1px solid var(--sidebar-border);
-  padding-top: 1rem;
-}
-
-.logout-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  width: 100%;
-  padding: 0.65rem 0.875rem;
-  border: none;
-  border-radius: 10px;
-  background: none;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.logout-btn:hover {
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
-}
-
-/* ── Main ── */
-.main-content {
-  flex: 1;
-  margin-left: 240px;
-  padding: 2rem 2.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-/* ── Topbar ── */
-.topbar {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.page-title {
-  font-size: 1.6rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  line-height: 1;
-  margin: 0;
-}
-
-.page-subtitle {
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  margin-top: 0.3rem;
-}
-
-.topbar-actions { display: flex; gap: 0.75rem; align-items: center; }
-
 .btn-action {
   display: flex;
   align-items: center;
