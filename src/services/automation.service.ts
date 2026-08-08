@@ -6,17 +6,25 @@ export interface Automation {
   id: string
   name: string
   type: AutomationType
-  message: string
-  daysAfter: number
+  message: string | null
+  daysAfter: number | null
   cooldownHours: number
   isActive: boolean
   isSystem: boolean
   createdAt: string
 }
 
+export interface CreateCampaignPayload {
+  name: string
+}
+
 export const automationService = {
   async list(): Promise<Automation[]> {
     const { data } = await api.get<Automation[]>('/automation')
+    return data
+  },
+  async createCampaign(payload: CreateCampaignPayload): Promise<Automation> {
+    const { data } = await api.post<Automation>('/automation/campaign', payload)
     return data
   },
 }
