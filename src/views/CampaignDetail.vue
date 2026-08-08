@@ -56,17 +56,49 @@
         </dl>
       </section>
 
-      <section class="composer-card" aria-labelledby="message-heading">
+      <section class="composer-card" aria-labelledby="content-heading">
         <div class="card-heading">
           <span class="step-number">1</span>
           <div>
-            <h2 id="message-heading">Mensagem</h2>
-            <p>Escreva o conteúdo que será preparado para envio.</p>
+            <h2 id="content-heading">{{ messageType === 'TEXT' ? 'Mensagem' : 'Imagem da campanha' }}</h2>
+            <p>Escolha o formato e prepare o conteúdo da campanha.</p>
           </div>
-          <span class="type-badge">Texto</span>
         </div>
 
-        <div class="form-field">
+        <div class="message-type-selector" role="radiogroup" aria-label="Tipo de mensagem">
+          <button
+            type="button"
+            class="type-option"
+            :class="{ selected: messageType === 'TEXT' }"
+            role="radio"
+            :aria-checked="messageType === 'TEXT'"
+            :disabled="sending || Boolean(dispatchResult)"
+            @click="setMessageType('TEXT')"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span>
+              <strong>Texto</strong>
+              <small>Mensagem personalizada</small>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="type-option"
+            :class="{ selected: messageType === 'IMAGE' }"
+            role="radio"
+            :aria-checked="messageType === 'IMAGE'"
+            :disabled="sending || Boolean(dispatchResult)"
+            @click="setMessageType('IMAGE')"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+            <span>
+              <strong>Imagem</strong>
+              <small>JPG ou PNG com legenda</small>
+            </span>
+          </button>
+        </div>
+
+        <div v-if="messageType === 'TEXT'" class="form-field">
           <label for="campaign-message">Mensagem</label>
           <textarea
             id="campaign-message"
@@ -78,7 +110,7 @@
             :aria-invalid="messageTouched && Boolean(messageValidationError)"
             aria-describedby="message-error message-counter"
             @blur="messageTouched = true"
-            @input="handleMessageInput"
+            @input="handleComposerInput"
           />
           <div class="field-meta">
             <span id="message-error" class="field-error" aria-live="polite">
@@ -87,6 +119,35 @@
             <span id="message-counter" class="character-counter">{{ message.length }}/2000</span>
           </div>
           <p class="personalization-help">Use <code v-pre>{{nome}}</code> para personalização. A substituição será feita pelo backend.</p>
+        </div>
+
+        <div v-else class="image-fields">
+          <CampaignImageUpload
+            :model-value="imageFile"
+            :disabled="sending || Boolean(dispatchResult)"
+            :error="displayedImageError"
+            @update:model-value="handleImageFileChange"
+            @validation-error="handleImageValidationError"
+            @preview-url="imagePreviewUrl = $event"
+          />
+
+          <div class="form-field">
+            <label for="campaign-caption">Legenda <span>(opcional)</span></label>
+            <textarea
+              id="campaign-caption"
+              v-model="caption"
+              rows="5"
+              maxlength="2000"
+              placeholder="Olá, {{nome}}! Confira esta novidade."
+              :disabled="sending || Boolean(dispatchResult)"
+              aria-describedby="caption-counter caption-help"
+              @input="handleComposerInput"
+            />
+            <div class="field-meta">
+              <span id="caption-help" class="caption-help">Use <code v-pre>{{nome}}</code> para personalização.</span>
+              <span id="caption-counter" class="character-counter">{{ caption.length }}/2000</span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -126,7 +187,7 @@
           </div>
           <div>
             <dt>Tipo</dt>
-            <dd>Texto</dd>
+            <dd>{{ messageType === 'TEXT' ? 'Texto' : 'Imagem' }}</dd>
           </div>
           <div>
             <dt>Público</dt>
@@ -134,9 +195,23 @@
           </div>
         </dl>
 
-        <div class="message-preview">
+        <div v-if="messageType === 'TEXT'" class="message-preview">
           <span>Preview da mensagem</span>
           <p>{{ message.trim() || 'Sua mensagem aparecerá aqui.' }}</p>
+        </div>
+
+        <div v-else class="image-review">
+          <img
+            v-if="imagePreviewUrl && imageFile"
+            :src="imagePreviewUrl"
+            :alt="`Prévia da imagem ${imageFile.name}`"
+          />
+          <div class="image-review-details">
+            <span>Imagem selecionada</span>
+            <strong>{{ imageFile?.name || 'Nenhuma imagem selecionada' }}</strong>
+            <p v-if="caption.trim()">{{ caption.trim() }}</p>
+            <p v-else class="empty-caption">Sem legenda</p>
+          </div>
         </div>
       </section>
 
@@ -167,7 +242,8 @@
         </span>
         <div>
           <h2 id="confirm-dispatch-title">Confirmar envio</h2>
-          <p>Esta ação irá preparar o envio para os clientes elegíveis.</p>
+          <p v-if="messageType === 'IMAGE'">Esta ação irá enviar a imagem para o armazenamento seguro e preparar a campanha para os clientes elegíveis.</p>
+          <p v-else>Esta ação irá preparar o envio para os clientes elegíveis.</p>
         </div>
       </div>
 
@@ -182,7 +258,7 @@
         </div>
         <div>
           <dt>Tipo</dt>
-          <dd>Texto</dd>
+          <dd>{{ messageType === 'TEXT' ? 'Texto' : 'Imagem' }}</dd>
         </div>
       </dl>
 
@@ -200,7 +276,7 @@
           @click="confirmDispatch"
         >
           <span v-if="sending" class="button-spinner" aria-hidden="true" />
-          {{ sending ? 'Preparando...' : 'Confirmar envio' }}
+          {{ sending ? (uploading ? 'Enviando imagem...' : 'Preparando...') : 'Confirmar envio' }}
         </button>
       </div>
     </div>
@@ -212,23 +288,38 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { isAxiosError } from 'axios'
 import { useRoute } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import CampaignImageUpload from '@/components/campaign/CampaignImageUpload.vue'
 import {
   automationService,
   type Automation,
+  type CampaignDispatchPayload,
   type CampaignDispatchResponse,
-  type CampaignTextDispatchPayload,
 } from '@/services/automation.service'
+import { mediaAssetService } from '@/services/media-asset.service'
+
+type CampaignMessageType = 'TEXT' | 'IMAGE'
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png']
 
 const route = useRoute()
 
 const campaign = ref<Automation | null>(null)
 const loading = ref(true)
 const loadError = ref(false)
+const messageType = ref<CampaignMessageType>('TEXT')
 const message = ref('')
 const messageTouched = ref(false)
+const caption = ref('')
+const imageFile = ref<File | null>(null)
+const imageTouched = ref(false)
+const imageSelectionError = ref('')
+const imagePreviewUrl = ref('')
+const uploadedMediaAssetId = ref<string | null>(null)
 const confirmModalOpen = ref(false)
 const confirmButton = ref<HTMLButtonElement | null>(null)
 const sending = ref(false)
+const uploading = ref(false)
 const dispatchError = ref('')
 const dispatchResult = ref<CampaignDispatchResponse | null>(null)
 
@@ -241,6 +332,27 @@ const messageValidationError = computed(() => {
   return ''
 })
 
+const imageValidationError = computed(() => {
+  if (imageSelectionError.value) return imageSelectionError.value
+  if (!imageFile.value) return 'Selecione uma imagem JPG ou PNG.'
+  if (imageFile.value.size === 0) return 'A imagem selecionada está vazia.'
+  if (!ALLOWED_IMAGE_TYPES.includes(imageFile.value.type)) return 'Selecione uma imagem JPG ou PNG.'
+  if (imageFile.value.size > MAX_IMAGE_SIZE) return 'A imagem deve ter no máximo 5 MB.'
+
+  return ''
+})
+
+const displayedImageError = computed(() => {
+  if (imageSelectionError.value) return imageSelectionError.value
+  return imageTouched.value ? imageValidationError.value : ''
+})
+
+const currentContentInvalid = computed(() => (
+  messageType.value === 'TEXT'
+    ? Boolean(messageValidationError.value)
+    : Boolean(imageValidationError.value)
+))
+
 function getCampaignId() {
   const id = route.params.id
   return Array.isArray(id) ? (id[0] ?? '') : (id ?? '')
@@ -251,6 +363,16 @@ async function loadCampaign() {
   loadError.value = false
   campaign.value = null
   dispatchResult.value = null
+  messageType.value = 'TEXT'
+  message.value = ''
+  messageTouched.value = false
+  caption.value = ''
+  imageFile.value = null
+  imageTouched.value = false
+  imageSelectionError.value = ''
+  imagePreviewUrl.value = ''
+  uploadedMediaAssetId.value = null
+  dispatchError.value = ''
 
   try {
     const automations = await automationService.list()
@@ -260,7 +382,6 @@ async function loadCampaign() {
 
     campaign.value = currentCampaign ?? null
     message.value = currentCampaign?.message ?? ''
-    messageTouched.value = false
   } catch {
     loadError.value = true
   } finally {
@@ -268,17 +389,44 @@ async function loadCampaign() {
   }
 }
 
-function handleMessageInput() {
+function handleComposerInput() {
   dispatchError.value = ''
+}
+
+function setMessageType(type: CampaignMessageType) {
+  if (sending.value || dispatchResult.value) return
+
+  messageType.value = type
+  dispatchError.value = ''
+}
+
+function handleImageFileChange(file: File | null) {
+  if (sending.value || dispatchResult.value) return
+
+  imageFile.value = file
+  imageTouched.value = true
+  uploadedMediaAssetId.value = null
+  dispatchError.value = ''
+
+  if (file) imageSelectionError.value = ''
+}
+
+function handleImageValidationError(error: string) {
+  imageSelectionError.value = error
+  if (error) imageTouched.value = true
 }
 
 async function openConfirmModal() {
   if (dispatchResult.value) return
 
-  messageTouched.value = true
+  if (messageType.value === 'TEXT') {
+    messageTouched.value = true
+  } else {
+    imageTouched.value = true
+  }
   dispatchError.value = ''
 
-  if (!campaign.value || messageValidationError.value) return
+  if (!campaign.value || currentContentInvalid.value) return
 
   confirmModalOpen.value = true
   await nextTick()
@@ -292,31 +440,94 @@ function closeConfirmModal() {
   dispatchError.value = ''
 }
 
-async function confirmDispatch() {
-  if (sending.value || dispatchResult.value || !campaign.value || messageValidationError.value) return
-
-  const payload: CampaignTextDispatchPayload = {
-    type: 'TEXT',
-    content: message.value.trim(),
-    audience: {
-      type: 'ALL_ELIGIBLE',
-    },
+function setUploadError(error: unknown) {
+  if (isAxiosError(error) && error.response?.status === 413) {
+    dispatchError.value = 'A imagem excede o tamanho permitido.'
+  } else if (isAxiosError(error) && error.response?.status === 400) {
+    dispatchError.value = 'Não foi possível validar esta imagem.'
+  } else {
+    dispatchError.value = 'Não foi possível enviar a imagem. Tente novamente.'
   }
+}
+
+async function getUploadedMediaAssetId() {
+  if (uploadedMediaAssetId.value) return uploadedMediaAssetId.value
+  if (!imageFile.value || imageValidationError.value) return null
+
+  uploading.value = true
+
+  try {
+    const mediaAsset = await mediaAssetService.uploadImage(imageFile.value)
+    if (mediaAsset.status !== 'READY') {
+      dispatchError.value = 'Não foi possível validar esta imagem.'
+      return null
+    }
+
+    uploadedMediaAssetId.value = mediaAsset.id
+    return mediaAsset.id
+  } catch (error) {
+    setUploadError(error)
+    return null
+  } finally {
+    uploading.value = false
+  }
+}
+
+function setDispatchError(error: unknown) {
+  if (isAxiosError(error) && error.response?.status === 404) {
+    dispatchError.value = 'Campanha não encontrada ou indisponível.'
+  } else if (isAxiosError(error) && error.response?.status === 409) {
+    dispatchError.value = 'Não foi possível preparar a campanha no estado atual.'
+  } else {
+    dispatchError.value = 'Não foi possível preparar o envio. Tente novamente.'
+  }
+}
+
+async function confirmDispatch() {
+  if (
+    sending.value
+    || dispatchResult.value
+    || !campaign.value
+    || currentContentInvalid.value
+  ) return
+
+  const campaignId = campaign.value.id
+  let payload: CampaignDispatchPayload
 
   sending.value = true
   dispatchError.value = ''
 
+  if (messageType.value === 'IMAGE') {
+    const mediaAssetId = await getUploadedMediaAssetId()
+    if (!mediaAssetId) {
+      sending.value = false
+      return
+    }
+
+    const trimmedCaption = caption.value.trim()
+    payload = {
+      type: 'IMAGE',
+      mediaAssetId,
+      ...(trimmedCaption ? { caption: trimmedCaption } : {}),
+      audience: {
+        type: 'ALL_ELIGIBLE',
+      },
+    }
+  } else {
+    payload = {
+      type: 'TEXT',
+      content: message.value.trim(),
+      audience: {
+        type: 'ALL_ELIGIBLE',
+      },
+    }
+  }
+
   try {
-    dispatchResult.value = await automationService.dispatchCampaign(campaign.value.id, payload)
+    dispatchResult.value = await automationService.dispatchCampaign(campaignId, payload)
     confirmModalOpen.value = false
   } catch (error) {
-    if (isAxiosError(error) && error.response?.status === 404) {
-      dispatchError.value = 'Campanha não encontrada ou indisponível.'
-    } else if (isAxiosError(error) && error.response?.status === 409) {
-      dispatchError.value = 'Não foi possível preparar a campanha no estado atual.'
-    } else {
-      dispatchError.value = 'Não foi possível preparar o envio. Tente novamente.'
-    }
+    setDispatchError(error)
   } finally {
     sending.value = false
   }
@@ -476,14 +687,60 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
   font-weight: 700;
 }
 
-.type-badge {
-  padding: 0.3rem 0.65rem;
+.message-type-selector {
+  margin-bottom: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.type-option {
+  min-width: 0;
+  padding: 0.875rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border: 1px solid var(--card-border);
+  border-radius: 11px;
+  color: var(--text-muted);
+  background: var(--input-bg);
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.type-option:hover:not(:disabled) {
+  color: var(--text-primary);
+  border-color: var(--input-border);
+  background: var(--nav-hover);
+}
+
+.type-option.selected {
   color: var(--brand-light);
   background: var(--brand-subtle);
-  border-radius: 999px;
+  border-color: rgba(124, 58, 237, 0.45);
+}
+
+.type-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.type-option > span {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.type-option strong {
+  color: currentColor;
+  font-size: 0.875rem;
+}
+
+.type-option small {
+  margin-top: 0.1rem;
+  color: var(--text-muted);
   font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
 }
 
 .form-field {
@@ -496,6 +753,11 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
   color: var(--text-secondary);
   font-size: 0.85rem;
   font-weight: 600;
+}
+
+.form-field label span {
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 .form-field textarea {
@@ -557,6 +819,24 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
 }
 
 .personalization-help code {
+  padding: 0.1rem 0.3rem;
+  color: var(--brand-light);
+  background: var(--brand-subtle);
+  border-radius: 4px;
+}
+
+.image-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.caption-help {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.caption-help code {
   padding: 0.1rem 0.3rem;
   color: var(--brand-light);
   background: var(--brand-subtle);
@@ -649,6 +929,67 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
   line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.image-review {
+  min-height: 150px;
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) 1fr;
+  overflow: hidden;
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 10px;
+}
+
+.image-review img {
+  width: 100%;
+  height: 100%;
+  min-height: 150px;
+  display: block;
+  object-fit: cover;
+  background: var(--bg-primary);
+}
+
+.image-review-details {
+  min-width: 0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.image-review-details > span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.image-review-details strong {
+  max-width: 100%;
+  margin-top: 0.25rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.image-review-details p {
+  max-width: 100%;
+  margin-top: 0.75rem;
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.image-review-details .empty-caption {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 .composer-actions {
@@ -838,8 +1179,17 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
 }
 
 @media (max-width: 720px) {
+  .message-type-selector,
   .review-list {
     grid-template-columns: 1fr;
+  }
+
+  .image-review {
+    grid-template-columns: 1fr;
+  }
+
+  .image-review img {
+    height: 190px;
   }
 
   .composer-actions,

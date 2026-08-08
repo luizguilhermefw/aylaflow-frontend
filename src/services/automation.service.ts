@@ -26,7 +26,19 @@ export interface CampaignTextDispatchPayload {
   type: 'TEXT'
   content: string
   audience: CampaignAudienceAllEligible
+  mediaAssetId?: never
+  caption?: never
 }
+
+export interface CampaignImageDispatchPayload {
+  type: 'IMAGE'
+  mediaAssetId: string
+  caption?: string
+  audience: CampaignAudienceAllEligible
+  content?: never
+}
+
+export type CampaignDispatchPayload = CampaignTextDispatchPayload | CampaignImageDispatchPayload
 
 export interface CampaignDispatchResponse {
   automationId: string
@@ -47,7 +59,7 @@ export const automationService = {
   },
   async dispatchCampaign(
     automationId: string,
-    payload: CampaignTextDispatchPayload,
+    payload: CampaignDispatchPayload,
   ): Promise<CampaignDispatchResponse> {
     const { data } = await api.post<CampaignDispatchResponse>(
       `/automation/${automationId}/campaign/dispatch`,
