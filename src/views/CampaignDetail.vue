@@ -160,15 +160,18 @@
           </div>
         </div>
 
-        <div class="audience-option" role="group" aria-label="Público selecionado">
-          <span class="selected-indicator" aria-hidden="true">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-          </span>
-          <div>
-            <strong>Todos os clientes elegíveis</strong>
-            <p>Clientes inelegíveis serão ignorados durante o processamento.</p>
-          </div>
-        </div>
+        <CampaignAudienceSelector
+          :audience-type="audienceType"
+          :customers="customers"
+          :selected-customer-ids="selectedCustomerIds"
+          :loading="customersLoading"
+          :error="customersError"
+          :validation-error="displayedAudienceError"
+          :disabled="sending || Boolean(dispatchResult)"
+          @update:audience-type="setAudienceType"
+          @update:selected-customer-ids="setSelectedCustomerIds"
+          @retry="loadCustomers"
+        />
       </section>
 
       <section class="composer-card" aria-labelledby="review-heading">
@@ -191,7 +194,7 @@
           </div>
           <div>
             <dt>Público</dt>
-            <dd>Todos os clientes elegíveis</dd>
+            <dd>{{ audienceSummary }}</dd>
           </div>
         </dl>
 
@@ -242,8 +245,7 @@
         </span>
         <div>
           <h2 id="confirm-dispatch-title">Confirmar envio</h2>
-          <p v-if="messageType === 'IMAGE'">Esta ação irá enviar a imagem para o armazenamento seguro e preparar a campanha para os clientes elegíveis.</p>
-          <p v-else>Esta ação irá preparar o envio para os clientes elegíveis.</p>
+          <p>{{ confirmationDescription }}</p>
         </div>
       </div>
 
@@ -254,7 +256,7 @@
         </div>
         <div>
           <dt>Público</dt>
-          <dd>Todos os clientes elegíveis</dd>
+          <dd>{{ audienceSummary }}</dd>
         </div>
         <div>
           <dt>Tipo</dt>
@@ -288,16 +290,20 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { isAxiosError } from 'axios'
 import { useRoute } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import CampaignAudienceSelector from '@/components/campaign/CampaignAudienceSelector.vue'
 import CampaignImageUpload from '@/components/campaign/CampaignImageUpload.vue'
 import {
   automationService,
   type Automation,
+  type CampaignAudience,
   type CampaignDispatchPayload,
   type CampaignDispatchResponse,
 } from '@/services/automation.service'
+import { customerService, type Customer } from '@/services/customer.service'
 import { mediaAssetService } from '@/services/media-asset.service'
 
 type CampaignMessageType = 'TEXT' | 'IMAGE'
+type CampaignAudienceType = CampaignAudience['type']
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png']
@@ -307,6 +313,13 @@ const route = useRoute()
 const campaign = ref<Automation | null>(null)
 const loading = ref(true)
 const loadError = ref(false)
+const audienceType = ref<CampaignAudienceType>('ALL_ELIGIBLE')
+const customers = ref<Customer[]>([])
+const customersLoading = ref(false)
+const customersError = ref(false)
+const customersRequested = ref(false)
+const selectedCustomerIds = ref<string[]>([])
+const audienceTouched = ref(false)
 const messageType = ref<CampaignMessageType>('TEXT')
 const message = ref('')
 const messageTouched = ref(false)
@@ -353,6 +366,37 @@ const currentContentInvalid = computed(() => (
     : Boolean(imageValidationError.value)
 ))
 
+const audienceValidationError = computed(() => (
+  audienceType.value === 'CUSTOMER_IDS' && selectedCustomerIds.value.length === 0
+    ? 'Selecione pelo menos um cliente.'
+    : ''
+))
+
+const displayedAudienceError = computed(() => (
+  audienceTouched.value ? audienceValidationError.value : ''
+))
+
+const audienceSummary = computed(() => {
+  if (audienceType.value === 'ALL_ELIGIBLE') return 'Todos os clientes elegíveis'
+
+  const count = selectedCustomerIds.value.length
+  return `${count} ${count === 1 ? 'cliente selecionado' : 'clientes selecionados'}`
+})
+
+const confirmationDescription = computed(() => {
+  const audience = audienceType.value === 'ALL_ELIGIBLE'
+    ? 'os clientes elegíveis'
+    : 'os clientes selecionados'
+
+  return messageType.value === 'IMAGE'
+    ? `Esta ação irá enviar a imagem para o armazenamento seguro e preparar a campanha para ${audience}.`
+    : `Esta ação irá preparar o envio para ${audience}.`
+})
+
+const currentFormInvalid = computed(() => (
+  currentContentInvalid.value || Boolean(audienceValidationError.value)
+))
+
 function getCampaignId() {
   const id = route.params.id
   return Array.isArray(id) ? (id[0] ?? '') : (id ?? '')
@@ -363,6 +407,13 @@ async function loadCampaign() {
   loadError.value = false
   campaign.value = null
   dispatchResult.value = null
+  audienceType.value = 'ALL_ELIGIBLE'
+  customers.value = []
+  customersLoading.value = false
+  customersError.value = false
+  customersRequested.value = false
+  selectedCustomerIds.value = []
+  audienceTouched.value = false
   messageType.value = 'TEXT'
   message.value = ''
   messageTouched.value = false
@@ -390,6 +441,49 @@ async function loadCampaign() {
 }
 
 function handleComposerInput() {
+  dispatchError.value = ''
+}
+
+async function loadCustomers() {
+  if (customersLoading.value || dispatchResult.value) return
+
+  customersRequested.value = true
+  customersLoading.value = true
+  customersError.value = false
+
+  try {
+    customers.value = await customerService.list()
+
+    const eligibleIds = new Set(
+      customers.value
+        .filter((customer) => customer.isActiveForAutomation)
+        .map((customer) => customer.id),
+    )
+    selectedCustomerIds.value = selectedCustomerIds.value.filter((id) => eligibleIds.has(id))
+  } catch {
+    customersError.value = true
+  } finally {
+    customersLoading.value = false
+  }
+}
+
+function setAudienceType(type: CampaignAudienceType) {
+  if (sending.value || dispatchResult.value) return
+
+  audienceType.value = type
+  audienceTouched.value = false
+  dispatchError.value = ''
+
+  if (type === 'CUSTOMER_IDS' && !customersRequested.value) {
+    void loadCustomers()
+  }
+}
+
+function setSelectedCustomerIds(ids: string[]) {
+  if (sending.value || dispatchResult.value) return
+
+  selectedCustomerIds.value = ids
+  audienceTouched.value = true
   dispatchError.value = ''
 }
 
@@ -424,9 +518,10 @@ async function openConfirmModal() {
   } else {
     imageTouched.value = true
   }
+  if (audienceType.value === 'CUSTOMER_IDS') audienceTouched.value = true
   dispatchError.value = ''
 
-  if (!campaign.value || currentContentInvalid.value) return
+  if (!campaign.value || currentFormInvalid.value) return
 
   confirmModalOpen.value = true
   await nextTick()
@@ -483,15 +578,29 @@ function setDispatchError(error: unknown) {
   }
 }
 
+function getAudiencePayload(): CampaignAudience {
+  if (audienceType.value === 'CUSTOMER_IDS') {
+    return {
+      type: 'CUSTOMER_IDS',
+      customerIds: [...selectedCustomerIds.value],
+    }
+  }
+
+  return {
+    type: 'ALL_ELIGIBLE',
+  }
+}
+
 async function confirmDispatch() {
   if (
     sending.value
     || dispatchResult.value
     || !campaign.value
-    || currentContentInvalid.value
+    || currentFormInvalid.value
   ) return
 
   const campaignId = campaign.value.id
+  const audience = getAudiencePayload()
   let payload: CampaignDispatchPayload
 
   sending.value = true
@@ -509,17 +618,13 @@ async function confirmDispatch() {
       type: 'IMAGE',
       mediaAssetId,
       ...(trimmedCaption ? { caption: trimmedCaption } : {}),
-      audience: {
-        type: 'ALL_ELIGIBLE',
-      },
+      audience,
     }
   } else {
     payload = {
       type: 'TEXT',
       content: message.value.trim(),
-      audience: {
-        type: 'ALL_ELIGIBLE',
-      },
+      audience,
     }
   }
 
@@ -841,39 +946,6 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
   color: var(--brand-light);
   background: var(--brand-subtle);
   border-radius: 4px;
-}
-
-.audience-option {
-  padding: 1rem;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.875rem;
-  background: var(--brand-subtle);
-  border: 1px solid rgba(124, 58, 237, 0.4);
-  border-radius: 12px;
-}
-
-.selected-indicator {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  background: var(--brand);
-  border-radius: 50%;
-}
-
-.audience-option strong {
-  color: var(--text-primary);
-  font-size: 0.9rem;
-}
-
-.audience-option p {
-  margin-top: 0.2rem;
-  color: var(--text-muted);
-  font-size: 0.8rem;
 }
 
 .review-list,

@@ -22,10 +22,17 @@ export interface CampaignAudienceAllEligible {
   type: 'ALL_ELIGIBLE'
 }
 
+export interface CampaignAudienceCustomerIds {
+  type: 'CUSTOMER_IDS'
+  customerIds: string[]
+}
+
+export type CampaignAudience = CampaignAudienceAllEligible | CampaignAudienceCustomerIds
+
 export interface CampaignTextDispatchPayload {
   type: 'TEXT'
   content: string
-  audience: CampaignAudienceAllEligible
+  audience: CampaignAudience
   mediaAssetId?: never
   caption?: never
 }
@@ -34,7 +41,7 @@ export interface CampaignImageDispatchPayload {
   type: 'IMAGE'
   mediaAssetId: string
   caption?: string
-  audience: CampaignAudienceAllEligible
+  audience: CampaignAudience
   content?: never
 }
 
