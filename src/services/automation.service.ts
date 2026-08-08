@@ -18,6 +18,24 @@ export interface CreateCampaignPayload {
   name: string
 }
 
+export interface CampaignAudienceAllEligible {
+  type: 'ALL_ELIGIBLE'
+}
+
+export interface CampaignTextDispatchPayload {
+  type: 'TEXT'
+  content: string
+  audience: CampaignAudienceAllEligible
+}
+
+export interface CampaignDispatchResponse {
+  automationId: string
+  type: 'TEXT' | 'IMAGE'
+  audienceType: 'ALL_ELIGIBLE' | 'CUSTOMER_IDS'
+  eligibleCustomers: number
+  processed: number
+}
+
 export const automationService = {
   async list(): Promise<Automation[]> {
     const { data } = await api.get<Automation[]>('/automation')
@@ -25,6 +43,16 @@ export const automationService = {
   },
   async createCampaign(payload: CreateCampaignPayload): Promise<Automation> {
     const { data } = await api.post<Automation>('/automation/campaign', payload)
+    return data
+  },
+  async dispatchCampaign(
+    automationId: string,
+    payload: CampaignTextDispatchPayload,
+  ): Promise<CampaignDispatchResponse> {
+    const { data } = await api.post<CampaignDispatchResponse>(
+      `/automation/${automationId}/campaign/dispatch`,
+      payload,
+    )
     return data
   },
 }

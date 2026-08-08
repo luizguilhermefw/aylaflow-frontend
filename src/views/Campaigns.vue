@@ -51,7 +51,12 @@
 
           <div class="campaign-card-footer">
             <time :datetime="campaign.createdAt">Criada em {{ formatDate(campaign.createdAt) }}</time>
-            <button type="button" class="btn-secondary" aria-disabled="true" disabled>Abrir</button>
+            <RouterLink
+              class="btn-secondary"
+              :to="{ name: 'campaign-detail', params: { id: campaign.id } }"
+            >
+              Abrir
+            </RouterLink>
           </div>
         </article>
       </div>
@@ -447,8 +452,12 @@ onMounted(loadCampaigns)
   border: 1px solid var(--card-border);
   color: var(--text-secondary);
   background: var(--nav-hover);
-  cursor: not-allowed;
-  opacity: 0.65;
+  text-decoration: none;
+}
+
+.btn-secondary:hover {
+  color: var(--text-primary);
+  background: var(--brand-subtle);
 }
 
 .modal-backdrop {
