@@ -20,6 +20,7 @@
           id="nav-campaigns"
           to="/campaigns"
           class="nav-item"
+          :class="{ active: route.name === 'campaigns' || route.name === 'campaign-detail' }"
           exact-active-class="active"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3Z"/><path d="M11.6 16.8 13 21H7l-1.8-6.2"/><path d="M8 9v6"/></svg>
@@ -64,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth.store'
 
 defineProps<{
@@ -72,6 +74,7 @@ defineProps<{
 }>()
 
 const authStore = useAuthStore()
+const route = useRoute()
 
 function handleLogout() {
   authStore.logout()
