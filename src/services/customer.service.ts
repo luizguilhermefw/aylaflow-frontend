@@ -1,18 +1,7 @@
 import api from './api'
+import { createCustomerRepository } from '@/features/contacts/contact.logic'
+import type { CustomerHttpClient } from '@/features/contacts/contact.logic'
 
-export interface Customer {
-  id: string
-  name: string
-  phone: string
-  isActiveForAutomation: boolean
-  lastPurchaseDate?: string
-  birthDate?: string | null
-  createdAt?: string
-}
+export type { Customer } from '@/features/contacts/contact.types'
 
-export const customerService = {
-  async list(): Promise<Customer[]> {
-    const { data } = await api.get<Customer[]>('/customer')
-    return data
-  },
-}
+export const customerService = createCustomerRepository(api as CustomerHttpClient)
