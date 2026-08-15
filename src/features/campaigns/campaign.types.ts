@@ -71,3 +71,12 @@ export interface CampaignAudiencePreviewState {
   fingerprint: string
   response: CampaignAudiencePreviewResponse
 }
+
+export interface AutomationLifecycleUpdatePayload {
+  isActive: boolean
+}
+
+export interface DeleteAutomationResponse<TAutomation> {
+  message: string
+  automation: TAutomation
+}

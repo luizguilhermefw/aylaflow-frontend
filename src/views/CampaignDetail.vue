@@ -34,6 +34,16 @@
     </section>
 
     <div v-else class="composer">
+      <section v-if="!campaign.isActive" class="inactive-warning" role="status">
+        <span aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+        </span>
+        <div>
+          <strong>Esta campanha está inativa.</strong>
+          <p>Reative a campanha para preparar novos envios.</p>
+        </div>
+      </section>
+
       <section v-if="dispatchResult" class="success-card" role="status" aria-live="polite">
         <div class="success-heading">
           <span class="success-icon" aria-hidden="true">
@@ -124,7 +134,7 @@
         <div v-else class="image-fields">
           <CampaignImageUpload
             :model-value="imageFile"
-            :disabled="sending || Boolean(dispatchResult)"
+            :disabled="sending || !campaign.isActive || Boolean(dispatchResult)"
             :error="displayedImageError"
             @update:model-value="handleImageFileChange"
             @validation-error="handleImageValidationError"
@@ -168,6 +178,7 @@
           :preview="audiencePreview"
           :previewing="previewingAudience"
           :preview-error="previewError"
+          :preview-disabled="!campaign.isActive"
           :loading="customersLoading"
           :error="customersError"
           :validation-error="displayedAudienceError"
@@ -238,10 +249,10 @@
         <button
           type="button"
           class="btn-primary send-button"
-          :disabled="sending || Boolean(dispatchResult)"
+          :disabled="sending || !campaign.isActive || Boolean(dispatchResult)"
           @click="openConfirmModal"
         >
-          {{ dispatchResult ? 'Campanha preparada' : 'Enviar campanha' }}
+          {{ dispatchResult ? 'Campanha preparada' : campaign.isActive ? 'Enviar campanha' : 'Campanha inativa' }}
         </button>
       </div>
     </div>
@@ -311,6 +322,9 @@ import { useRoute } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import CampaignAudienceSelector from '@/components/campaign/CampaignAudienceSelector.vue'
 import CampaignImageUpload from '@/components/campaign/CampaignImageUpload.vue'
+import {
+  campaignAllowsPreparation,
+} from '@/features/campaigns/campaign-lifecycle.logic'
 import {
   automationService,
   type Automation,
@@ -571,6 +585,11 @@ function setSegmentFilters(filters: CampaignSegmentForm) {
 async function previewAudience() {
   if (previewingAudience.value || sending.value || dispatchResult.value || !campaign.value) return
 
+  if (!campaignAllowsPreparation(campaign.value)) {
+    previewError.value = 'Reative a campanha para atualizar a prévia do público.'
+    return
+  }
+
   audienceTouched.value = true
   previewError.value = ''
   dispatchError.value = ''
@@ -637,6 +656,11 @@ function handleImageValidationError(error: string) {
 async function openConfirmModal() {
   if (dispatchResult.value) return
 
+  if (!campaign.value || !campaignAllowsPreparation(campaign.value)) {
+    dispatchError.value = 'Reative a campanha para preparar novos envios.'
+    return
+  }
+
   if (messageType.value === 'TEXT') {
     messageTouched.value = true
   } else {
@@ -645,7 +669,7 @@ async function openConfirmModal() {
   audienceTouched.value = true
   dispatchError.value = ''
 
-  if (!campaign.value || currentFormInvalid.value) return
+  if (currentFormInvalid.value) return
 
   if (!audiencePreviewIsCurrent.value) {
     dispatchError.value = 'Atualize a prévia do público antes de enviar.'
@@ -680,6 +704,10 @@ function setUploadError(error: unknown) {
 }
 
 async function getUploadedMediaAssetId() {
+  if (!campaign.value || !campaignAllowsPreparation(campaign.value)) {
+    dispatchError.value = 'Reative a campanha para preparar novos envios.'
+    return null
+  }
   if (uploadedMediaAssetId.value) return uploadedMediaAssetId.value
   if (!imageFile.value || imageValidationError.value) return null
 
@@ -719,6 +747,11 @@ async function confirmDispatch() {
     || !campaign.value
     || currentFormInvalid.value
   ) return
+
+  if (!campaignAllowsPreparation(campaign.value)) {
+    dispatchError.value = 'Reative a campanha para preparar novos envios.'
+    return
+  }
 
   if (
     !audiencePreviewIsCurrent.value
@@ -883,6 +916,33 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: 16px;
+}
+
+.inactive-warning {
+  padding: 1rem 1.125rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.09);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 12px;
+}
+
+.inactive-warning > span {
+  flex-shrink: 0;
+}
+
+.inactive-warning strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.inactive-warning p {
+  margin-top: 0.2rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }
 
 .card-heading {

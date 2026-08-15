@@ -51,12 +51,29 @@
 
           <div class="campaign-card-footer">
             <time :datetime="campaign.createdAt">Criada em {{ formatDate(campaign.createdAt) }}</time>
-            <RouterLink
-              class="btn-secondary"
-              :to="{ name: 'campaign-detail', params: { id: campaign.id } }"
-            >
-              Abrir
-            </RouterLink>
+            <div class="card-actions">
+              <RouterLink
+                class="btn-secondary"
+                :to="{ name: 'campaign-detail', params: { id: campaign.id } }"
+              >
+                Abrir
+              </RouterLink>
+              <button
+                type="button"
+                class="btn-secondary lifecycle-button"
+                @click="openLifecycleAction(campaign, campaign.isActive ? 'DEACTIVATE' : 'ACTIVATE')"
+              >
+                {{ campaignLifecycleActionLabel(campaign) }}
+              </button>
+              <button
+                v-if="!campaign.isSystem"
+                type="button"
+                class="delete-action"
+                @click="openLifecycleAction(campaign, 'DELETE')"
+              >
+                Excluir
+              </button>
+            </div>
           </div>
         </article>
       </div>
@@ -130,15 +147,87 @@
       </form>
     </div>
   </div>
+
+  <div
+    v-if="actionCampaign && actionType"
+    class="modal-backdrop"
+    @click.self="closeLifecycleAction"
+  >
+    <div
+      class="modal lifecycle-modal"
+      :class="{ 'destructive-modal': actionType === 'DELETE' }"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="campaign-lifecycle-title"
+    >
+      <div class="modal-header">
+        <div>
+          <h2 id="campaign-lifecycle-title">{{ lifecycleTitle }}</h2>
+          <p>{{ lifecycleDescription }}</p>
+        </div>
+        <button
+          type="button"
+          class="modal-close"
+          aria-label="Fechar"
+          :disabled="actionLoading"
+          @click="closeLifecycleAction"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
+        </button>
+      </div>
+
+      <p v-if="actionType === 'DELETE'" class="destructive-warning">
+        Esta ação não poderá ser desfeita.
+      </p>
+      <p v-if="actionError" class="create-error" role="alert">{{ actionError }}</p>
+
+      <div class="modal-actions">
+        <button
+          ref="lifecycleCancelButton"
+          type="button"
+          class="btn-cancel"
+          :disabled="actionLoading"
+          @click="closeLifecycleAction"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          :class="actionType === 'DELETE' ? 'btn-danger' : 'btn-primary'"
+          :disabled="actionLoading"
+          @click="confirmLifecycleAction"
+        >
+          <span v-if="actionLoading" class="button-spinner" aria-hidden="true" />
+          {{ actionLoading ? 'Processando...' : lifecycleConfirmLabel }}
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, toRef } from 'vue'
 import { isAxiosError } from 'axios'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { automationService, type Automation } from '@/services/automation.service'
+import {
+  campaignLifecycleActionLabel,
+  createCampaignLifecycleController,
+  emptyCampaignLifecycleState,
+  type CampaignLifecycleActionType,
+  type CampaignLifecycleState,
+} from '@/features/campaigns/campaign-lifecycle.logic'
 
-const campaigns = ref<Automation[]>([])
+const lifecycleState = reactive(
+  emptyCampaignLifecycleState<Automation>(),
+) as CampaignLifecycleState<Automation>
+const lifecycleController = createCampaignLifecycleController(automationService, lifecycleState)
+const campaigns = toRef(lifecycleState, 'campaigns')
+const actionCampaign = toRef(lifecycleState, 'actionCampaign')
+const actionType = toRef(lifecycleState, 'actionType')
+const actionLoading = toRef(lifecycleState, 'actionLoading')
+const actionError = toRef(lifecycleState, 'actionError')
+const successMessage = toRef(lifecycleState, 'successMessage')
 const loading = ref(true)
 const loadError = ref(false)
 const createModalOpen = ref(false)
@@ -147,7 +236,7 @@ const campaignNameTouched = ref(false)
 const campaignNameInput = ref<HTMLInputElement | null>(null)
 const creating = ref(false)
 const createError = ref('')
-const successMessage = ref('')
+const lifecycleCancelButton = ref<HTMLButtonElement | null>(null)
 
 const campaignNameValidationError = computed(() => {
   const name = campaignName.value.trim()
@@ -156,6 +245,28 @@ const campaignNameValidationError = computed(() => {
   if (name.length > 120) return 'O nome da campanha deve ter no máximo 120 caracteres.'
 
   return ''
+})
+
+const lifecycleTitle = computed(() => {
+  if (actionType.value === 'DELETE') return 'Excluir campanha'
+  if (actionType.value === 'ACTIVATE') return 'Reativar campanha'
+  return 'Desativar campanha'
+})
+
+const lifecycleDescription = computed(() => {
+  if (actionType.value === 'DELETE') {
+    return `Você está prestes a excluir permanentemente a campanha “${actionCampaign.value?.name ?? ''}”.`
+  }
+  if (actionType.value === 'ACTIVATE') {
+    return 'Esta campanha voltará a ficar disponível para uso.'
+  }
+  return 'Esta campanha ficará indisponível para novos envios até ser reativada.'
+})
+
+const lifecycleConfirmLabel = computed(() => {
+  if (actionType.value === 'DELETE') return 'Excluir campanha'
+  if (actionType.value === 'ACTIVATE') return 'Reativar'
+  return 'Desativar'
 })
 
 async function loadCampaigns() {
@@ -223,6 +334,20 @@ async function createCampaign() {
   } finally {
     creating.value = false
   }
+}
+
+async function openLifecycleAction(campaign: Automation, type: CampaignLifecycleActionType) {
+  if (!lifecycleController.openAction(campaign, type)) return
+  await nextTick()
+  lifecycleCancelButton.value?.focus()
+}
+
+function closeLifecycleAction() {
+  lifecycleController.closeAction()
+}
+
+async function confirmLifecycleAction() {
+  await lifecycleController.confirmAction()
 }
 
 onMounted(loadCampaigns)
@@ -447,6 +572,14 @@ onMounted(loadCampaigns)
   font-size: 0.75rem;
 }
 
+.card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .btn-secondary {
   padding: 0.5rem 0.85rem;
   border: 1px solid var(--card-border);
@@ -458,6 +591,26 @@ onMounted(loadCampaigns)
 .btn-secondary:hover {
   color: var(--text-primary);
   background: var(--brand-subtle);
+}
+
+.lifecycle-button,
+.delete-action {
+  font: inherit;
+}
+
+.delete-action {
+  padding: 0.5rem 0.65rem;
+  border: none;
+  border-radius: 8px;
+  color: var(--error);
+  background: transparent;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.delete-action:hover {
+  background: rgba(239, 68, 68, 0.1);
 }
 
 .modal-backdrop {
@@ -524,6 +677,25 @@ onMounted(loadCampaigns)
 
 .modal-form {
   margin-top: 1.5rem;
+}
+
+.lifecycle-modal .modal-actions {
+  margin-top: 1.5rem;
+}
+
+.destructive-modal {
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+.destructive-warning {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  color: var(--error);
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 9px;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .form-field {
@@ -605,6 +777,30 @@ onMounted(loadCampaigns)
   transition: color 0.15s, background 0.15s;
 }
 
+.btn-danger {
+  padding: 0.7rem 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  background: var(--error);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-danger:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.btn-danger:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .btn-cancel:hover:not(:disabled) {
   color: var(--text-primary);
   background: var(--nav-hover);
@@ -639,6 +835,11 @@ onMounted(loadCampaigns)
   .campaign-card-footer {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .card-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 }
 </style>

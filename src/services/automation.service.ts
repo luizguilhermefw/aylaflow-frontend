@@ -7,6 +7,8 @@ import type {
   CampaignAudienceType,
   CampaignAudienceUpdatePayload,
   CampaignSegmentGender,
+  AutomationLifecycleUpdatePayload,
+  DeleteAutomationResponse,
 } from '@/features/campaigns/campaign.types'
 
 export type {
@@ -17,6 +19,8 @@ export type {
   CampaignAudienceUpdatePayload,
   CampaignSegmentForm,
   CampaignSegmentGender,
+  AutomationLifecycleUpdatePayload,
+  DeleteAutomationResponse,
 } from '@/features/campaigns/campaign.types'
 
 export type AutomationType = 'REACTIVATION' | 'BIRTHDAY' | 'CAMPAIGN' | 'MAINTENANCE'
@@ -75,6 +79,8 @@ export interface AutomationService {
   list(): Promise<Automation[]>
   createCampaign(payload: CreateCampaignPayload): Promise<Automation>
   updateCampaignAudience(id: string, payload: CampaignAudienceUpdatePayload): Promise<Automation>
+  updateAutomation(id: string, payload: AutomationLifecycleUpdatePayload): Promise<Automation>
+  deleteAutomation(id: string): Promise<DeleteAutomationResponse<Automation>>
   previewCampaignAudience(
     id: string,
     payload: { audience: CampaignAudience },
