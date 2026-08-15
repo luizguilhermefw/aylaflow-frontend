@@ -241,7 +241,7 @@
       <button
         type="button"
         class="preview-button"
-        :disabled="disabled || previewing"
+        :disabled="disabled || previewDisabled || previewing"
         @click="$emit('preview')"
       >
         <span v-if="previewing" class="spinner preview-spinner" aria-hidden="true" />
@@ -288,6 +288,7 @@ const props = defineProps<{
   preview: CampaignAudiencePreviewResponse | null
   previewing: boolean
   previewError: string
+  previewDisabled: boolean
   loading: boolean
   error: boolean
   validationError: string

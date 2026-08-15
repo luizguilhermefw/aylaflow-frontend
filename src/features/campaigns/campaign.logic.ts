@@ -7,6 +7,8 @@ import type {
   CampaignAudienceUpdatePayload,
   CampaignSegmentForm,
   CampaignSegmentationFields,
+  AutomationLifecycleUpdatePayload,
+  DeleteAutomationResponse,
   PersistedCampaignAudience,
 } from './campaign.types'
 
@@ -246,12 +248,15 @@ export interface CampaignHttpClient {
   get<T>(url: string): Promise<{ data: T }>
   post<T>(url: string, payload: unknown): Promise<{ data: T }>
   patch<T>(url: string, payload: unknown): Promise<{ data: T }>
+  delete<T>(url: string): Promise<{ data: T }>
 }
 
 export interface CampaignRepository<TAutomation, TDispatchPayload, TDispatchResponse> {
   list(): Promise<TAutomation[]>
   createCampaign(payload: { name: string }): Promise<TAutomation>
   updateCampaignAudience(id: string, payload: CampaignAudienceUpdatePayload): Promise<TAutomation>
+  updateAutomation(id: string, payload: AutomationLifecycleUpdatePayload): Promise<TAutomation>
+  deleteAutomation(id: string): Promise<DeleteAutomationResponse<TAutomation>>
   previewCampaignAudience(
     id: string,
     payload: CampaignAudiencePreviewPayload,
@@ -273,6 +278,16 @@ export function createCampaignRepository<TAutomation, TDispatchPayload, TDispatc
     },
     async updateCampaignAudience(id, payload) {
       const { data } = await http.patch<TAutomation>(campaignUpdateEndpoint(id), payload)
+      return data
+    },
+    async updateAutomation(id, payload) {
+      const { data } = await http.patch<TAutomation>(campaignUpdateEndpoint(id), payload)
+      return data
+    },
+    async deleteAutomation(id) {
+      const { data } = await http.delete<DeleteAutomationResponse<TAutomation>>(
+        campaignUpdateEndpoint(id),
+      )
       return data
     },
     async previewCampaignAudience(id, payload) {
