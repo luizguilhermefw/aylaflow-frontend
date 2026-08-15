@@ -1,4 +1,23 @@
 import api from './api'
+import { createCampaignRepository } from '@/features/campaigns/campaign.logic'
+import type { CampaignHttpClient } from '@/features/campaigns/campaign.logic'
+import type {
+  CampaignAudience,
+  CampaignAudiencePreviewResponse,
+  CampaignAudienceType,
+  CampaignAudienceUpdatePayload,
+  CampaignSegmentGender,
+} from '@/features/campaigns/campaign.types'
+
+export type {
+  CampaignAudience,
+  CampaignAudiencePreviewPayload,
+  CampaignAudiencePreviewResponse,
+  CampaignAudienceType,
+  CampaignAudienceUpdatePayload,
+  CampaignSegmentForm,
+  CampaignSegmentGender,
+} from '@/features/campaigns/campaign.types'
 
 export type AutomationType = 'REACTIVATION' | 'BIRTHDAY' | 'CAMPAIGN' | 'MAINTENANCE'
 
@@ -12,22 +31,19 @@ export interface Automation {
   isActive: boolean
   isSystem: boolean
   createdAt: string
+  campaignAudienceType: CampaignAudienceType
+  segmentGender: CampaignSegmentGender | null
+  segmentCity: string | null
+  segmentState: string | null
+  segmentMinAge: number | null
+  segmentMaxAge: number | null
+  segmentLastPurchaseBefore: string | null
+  segmentLastPurchaseAfter: string | null
 }
 
 export interface CreateCampaignPayload {
   name: string
 }
-
-export interface CampaignAudienceAllEligible {
-  type: 'ALL_ELIGIBLE'
-}
-
-export interface CampaignAudienceCustomerIds {
-  type: 'CUSTOMER_IDS'
-  customerIds: string[]
-}
-
-export type CampaignAudience = CampaignAudienceAllEligible | CampaignAudienceCustomerIds
 
 export interface CampaignTextDispatchPayload {
   type: 'TEXT'
@@ -50,28 +66,24 @@ export type CampaignDispatchPayload = CampaignTextDispatchPayload | CampaignImag
 export interface CampaignDispatchResponse {
   automationId: string
   type: 'TEXT' | 'IMAGE'
-  audienceType: 'ALL_ELIGIBLE' | 'CUSTOMER_IDS'
+  audienceType: CampaignAudienceType
   eligibleCustomers: number
   processed: number
 }
 
-export const automationService = {
-  async list(): Promise<Automation[]> {
-    const { data } = await api.get<Automation[]>('/automation')
-    return data
-  },
-  async createCampaign(payload: CreateCampaignPayload): Promise<Automation> {
-    const { data } = await api.post<Automation>('/automation/campaign', payload)
-    return data
-  },
-  async dispatchCampaign(
-    automationId: string,
-    payload: CampaignDispatchPayload,
-  ): Promise<CampaignDispatchResponse> {
-    const { data } = await api.post<CampaignDispatchResponse>(
-      `/automation/${automationId}/campaign/dispatch`,
-      payload,
-    )
-    return data
-  },
+export interface AutomationService {
+  list(): Promise<Automation[]>
+  createCampaign(payload: CreateCampaignPayload): Promise<Automation>
+  updateCampaignAudience(id: string, payload: CampaignAudienceUpdatePayload): Promise<Automation>
+  previewCampaignAudience(
+    id: string,
+    payload: { audience: CampaignAudience },
+  ): Promise<CampaignAudiencePreviewResponse>
+  dispatchCampaign(id: string, payload: CampaignDispatchPayload): Promise<CampaignDispatchResponse>
 }
+
+export const automationService: AutomationService = createCampaignRepository<
+  Automation,
+  CampaignDispatchPayload,
+  CampaignDispatchResponse
+>(api as CampaignHttpClient)

@@ -36,6 +36,24 @@
           <small>Escolha individualmente quem será incluído.</small>
         </span>
       </button>
+
+      <button
+        type="button"
+        class="audience-option"
+        :class="{ selected: audienceType === 'SEGMENTED' }"
+        role="radio"
+        :aria-checked="audienceType === 'SEGMENTED'"
+        :disabled="disabled"
+        @click="selectAudienceType('SEGMENTED')"
+      >
+        <span class="option-indicator" aria-hidden="true">
+          <svg v-if="audienceType === 'SEGMENTED'" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </span>
+        <span>
+          <strong>Segmentar clientes</strong>
+          <small>Filtre clientes por perfil e histórico de compra.</small>
+        </span>
+      </button>
     </div>
 
     <div v-if="audienceType === 'CUSTOMER_IDS'" class="customer-selector">
@@ -117,21 +135,159 @@
       </template>
     </div>
 
+    <div v-else-if="audienceType === 'SEGMENTED'" class="segmentation-panel">
+      <div class="segmentation-grid">
+        <div class="segment-field">
+          <label for="segment-gender">Gênero</label>
+          <select
+            id="segment-gender"
+            :value="segmentFilters.segmentGender"
+            :disabled="disabled"
+            @change="updateSegmentFilter('segmentGender', inputValue($event))"
+          >
+            <option value="">Todos / nenhum filtro</option>
+            <option value="FEMALE">Feminino</option>
+            <option value="MALE">Masculino</option>
+            <option value="OTHER">Outro</option>
+            <option value="UNSPECIFIED">Não informado</option>
+          </select>
+        </div>
+
+        <div class="segment-field">
+          <label for="segment-city">Cidade</label>
+          <input
+            id="segment-city"
+            type="text"
+            :value="segmentFilters.segmentCity"
+            :disabled="disabled"
+            autocomplete="address-level2"
+            placeholder="Ex.: Cascavel"
+            @input="updateSegmentFilter('segmentCity', inputValue($event))"
+          />
+        </div>
+
+        <div class="segment-field">
+          <label for="segment-state">UF</label>
+          <select
+            id="segment-state"
+            :value="segmentFilters.segmentState"
+            :disabled="disabled"
+            autocomplete="address-level1"
+            @change="updateSegmentFilter('segmentState', inputValue($event))"
+          >
+            <option value="">Todas</option>
+            <option v-for="state in BRAZILIAN_STATES" :key="state" :value="state">{{ state }}</option>
+          </select>
+        </div>
+
+        <div class="segment-field">
+          <label for="segment-min-age">Idade mínima</label>
+          <input
+            id="segment-min-age"
+            type="number"
+            min="0"
+            max="120"
+            step="1"
+            :value="segmentFilters.segmentMinAge"
+            :disabled="disabled"
+            placeholder="0"
+            @input="updateSegmentFilter('segmentMinAge', inputValue($event))"
+          />
+        </div>
+
+        <div class="segment-field">
+          <label for="segment-max-age">Idade máxima</label>
+          <input
+            id="segment-max-age"
+            type="number"
+            min="0"
+            max="120"
+            step="1"
+            :value="segmentFilters.segmentMaxAge"
+            :disabled="disabled"
+            placeholder="120"
+            @input="updateSegmentFilter('segmentMaxAge', inputValue($event))"
+          />
+        </div>
+
+        <div class="segment-field">
+          <label for="segment-last-purchase-after">Última compra após</label>
+          <input
+            id="segment-last-purchase-after"
+            type="date"
+            :value="segmentFilters.segmentLastPurchaseAfter"
+            :disabled="disabled"
+            @input="updateSegmentFilter('segmentLastPurchaseAfter', inputValue($event))"
+          />
+        </div>
+
+        <div class="segment-field">
+          <label for="segment-last-purchase-before">Última compra antes de</label>
+          <input
+            id="segment-last-purchase-before"
+            type="date"
+            :value="segmentFilters.segmentLastPurchaseBefore"
+            :disabled="disabled"
+            @input="updateSegmentFilter('segmentLastPurchaseBefore', inputValue($event))"
+          />
+        </div>
+      </div>
+      <p v-if="validationError" class="selection-error" role="alert">{{ validationError }}</p>
+    </div>
+
     <p v-else class="audience-help">Clientes inelegíveis não serão processados.</p>
+
+    <div class="preview-actions">
+      <button
+        type="button"
+        class="preview-button"
+        :disabled="disabled || previewing"
+        @click="$emit('preview')"
+      >
+        <span v-if="previewing" class="spinner preview-spinner" aria-hidden="true" />
+        {{ preview ? 'Atualizar prévia' : 'Pré-visualizar público' }}
+      </button>
+      <p v-if="previewError" class="preview-error" role="alert">{{ previewError }}</p>
+    </div>
+
+    <section v-if="preview" class="preview-card" aria-label="Prévia do público" aria-live="polite">
+      <dl>
+        <div>
+          <dt>Encontrados</dt>
+          <dd>{{ preview.matched }}</dd>
+        </div>
+        <div>
+          <dt>Elegíveis para envio</dt>
+          <dd>{{ preview.eligible }}</dd>
+        </div>
+        <div>
+          <dt>Bloqueados</dt>
+          <dd>{{ preview.blocked }}</dd>
+        </div>
+      </dl>
+      <p>Clientes bloqueados não serão enviados pelo AylaFlow.</p>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { Customer } from '@/services/customer.service'
-import type { CampaignAudience } from '@/services/automation.service'
-
-type AudienceType = CampaignAudience['type']
+import { BRAZILIAN_STATES } from '@/features/contacts/contact.logic'
+import type {
+  CampaignAudiencePreviewResponse,
+  CampaignAudienceType,
+  CampaignSegmentForm,
+} from '@/features/campaigns/campaign.types'
 
 const props = defineProps<{
-  audienceType: AudienceType
+  audienceType: CampaignAudienceType
   customers: Customer[]
   selectedCustomerIds: string[]
+  segmentFilters: CampaignSegmentForm
+  preview: CampaignAudiencePreviewResponse | null
+  previewing: boolean
+  previewError: string
   loading: boolean
   error: boolean
   validationError: string
@@ -139,8 +295,10 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'update:audienceType': [type: AudienceType]
+  'update:audienceType': [type: CampaignAudienceType]
   'update:selectedCustomerIds': [ids: string[]]
+  'update:segmentFilters': [filters: CampaignSegmentForm]
+  preview: []
   retry: []
 }>()
 
@@ -164,9 +322,18 @@ const filteredCustomers = computed(() => {
   })
 })
 
-function selectAudienceType(type: AudienceType) {
+function selectAudienceType(type: CampaignAudienceType) {
   if (props.disabled) return
   emit('update:audienceType', type)
+}
+
+function inputValue(event: Event): string {
+  return (event.target as HTMLInputElement | HTMLSelectElement).value
+}
+
+function updateSegmentFilter(field: keyof CampaignSegmentForm, value: string) {
+  if (props.disabled) return
+  emit('update:segmentFilters', { ...props.segmentFilters, [field]: value })
 }
 
 function toggleCustomer(customerId: string) {
@@ -205,7 +372,7 @@ function clearSelection() {
 
 .audience-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
@@ -463,6 +630,141 @@ function clearSelection() {
   color: var(--error);
 }
 
+.segmentation-panel {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+}
+
+.segmentation-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.875rem;
+}
+
+.segment-field {
+  min-width: 0;
+}
+
+.segment-field label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.segment-field input,
+.segment-field select {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--input-border);
+  border-radius: 9px;
+  outline: none;
+  color: var(--text-primary);
+  background: var(--input-bg);
+  color-scheme: dark;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.segment-field input:focus,
+.segment-field select:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+.segment-field input:disabled,
+.segment-field select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.segmentation-panel > .selection-error {
+  display: block;
+  margin-top: 0.75rem;
+  font-size: 0.78rem;
+}
+
+.preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.preview-button {
+  padding: 0.65rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(124, 58, 237, 0.45);
+  border-radius: 9px;
+  color: var(--brand-light);
+  background: var(--brand-subtle);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.preview-button:hover:not(:disabled) {
+  border-color: var(--brand-light);
+}
+
+.preview-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.preview-spinner {
+  width: 16px;
+  height: 16px;
+}
+
+.preview-error {
+  color: var(--error);
+  font-size: 0.78rem;
+}
+
+.preview-card {
+  padding: 1rem;
+  background: var(--brand-subtle);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 12px;
+}
+
+.preview-card dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.preview-card dl > div {
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 9px;
+}
+
+.preview-card dt {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.preview-card dd {
+  margin-top: 0.25rem;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.preview-card p {
+  margin-top: 0.75rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
 .audience-help {
   color: var(--text-muted);
   font-size: 0.78rem;
@@ -492,6 +794,16 @@ function clearSelection() {
 
   .selection-summary {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .segmentation-grid,
+  .preview-card dl {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-actions {
+    align-items: stretch;
     flex-direction: column;
   }
 }

@@ -164,12 +164,18 @@
           :audience-type="audienceType"
           :customers="customers"
           :selected-customer-ids="selectedCustomerIds"
+          :segment-filters="segmentFilters"
+          :preview="audiencePreview"
+          :previewing="previewingAudience"
+          :preview-error="previewError"
           :loading="customersLoading"
           :error="customersError"
           :validation-error="displayedAudienceError"
-          :disabled="sending || Boolean(dispatchResult)"
+          :disabled="sending || previewingAudience || Boolean(dispatchResult)"
           @update:audience-type="setAudienceType"
           @update:selected-customer-ids="setSelectedCustomerIds"
+          @update:segment-filters="setSegmentFilters"
+          @preview="previewAudience"
           @retry="loadCustomers"
         />
       </section>
@@ -196,6 +202,10 @@
             <dt>Público</dt>
             <dd>{{ audienceSummary }}</dd>
           </div>
+          <div v-if="audiencePreview">
+            <dt>Prévia do público</dt>
+            <dd>{{ audiencePreview.eligible }} elegíveis · {{ audiencePreview.blocked }} bloqueados</dd>
+          </div>
         </dl>
 
         <div v-if="messageType === 'TEXT'" class="message-preview">
@@ -219,7 +229,12 @@
       </section>
 
       <div class="composer-actions">
-        <p>O envio só será preparado após sua confirmação.</p>
+        <div>
+          <p>O envio só será preparado após sua confirmação.</p>
+          <p v-if="dispatchError && !confirmModalOpen" class="dispatch-error" role="alert">
+            {{ dispatchError }}
+          </p>
+        </div>
         <button
           type="button"
           class="btn-primary send-button"
@@ -262,6 +277,10 @@
           <dt>Tipo</dt>
           <dd>{{ messageType === 'TEXT' ? 'Texto' : 'Imagem' }}</dd>
         </div>
+        <div v-if="audiencePreview">
+          <dt>Prévia do público</dt>
+          <dd>{{ audiencePreview.eligible }} elegíveis · {{ audiencePreview.blocked }} bloqueados</dd>
+        </div>
       </dl>
 
       <p v-if="dispatchError" class="dispatch-error" role="alert">{{ dispatchError }}</p>
@@ -295,15 +314,32 @@ import CampaignImageUpload from '@/components/campaign/CampaignImageUpload.vue'
 import {
   automationService,
   type Automation,
-  type CampaignAudience,
   type CampaignDispatchPayload,
   type CampaignDispatchResponse,
 } from '@/services/automation.service'
+import {
+  buildCampaignAudience,
+  buildCampaignAudiencePreview,
+  buildCampaignAudienceUpdate,
+  campaignAudienceFingerprint,
+  campaignAudienceSummary,
+  campaignPreviewError,
+  emptyCampaignSegmentForm,
+  hydrateCampaignAudience,
+  isCampaignAudiencePersisted,
+  isCampaignPreviewCurrent,
+  shouldPersistAllEligible,
+  validateCampaignSegmentation,
+} from '@/features/campaigns/campaign.logic'
+import type {
+  CampaignAudiencePreviewState,
+  CampaignAudienceType,
+  CampaignSegmentForm,
+} from '@/features/campaigns/campaign.types'
 import { customerService, type Customer } from '@/services/customer.service'
 import { mediaAssetService } from '@/services/media-asset.service'
 
 type CampaignMessageType = 'TEXT' | 'IMAGE'
-type CampaignAudienceType = CampaignAudience['type']
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png']
@@ -319,7 +355,11 @@ const customersLoading = ref(false)
 const customersError = ref(false)
 const customersRequested = ref(false)
 const selectedCustomerIds = ref<string[]>([])
+const segmentFilters = ref<CampaignSegmentForm>(emptyCampaignSegmentForm())
 const audienceTouched = ref(false)
+const audiencePreviewState = ref<CampaignAudiencePreviewState | null>(null)
+const previewingAudience = ref(false)
+const previewError = ref('')
 const messageType = ref<CampaignMessageType>('TEXT')
 const message = ref('')
 const messageTouched = ref(false)
@@ -366,27 +406,47 @@ const currentContentInvalid = computed(() => (
     : Boolean(imageValidationError.value)
 ))
 
-const audienceValidationError = computed(() => (
-  audienceType.value === 'CUSTOMER_IDS' && selectedCustomerIds.value.length === 0
-    ? 'Selecione pelo menos um cliente.'
-    : ''
-))
+const audienceValidationError = computed(() => {
+  if (audienceType.value === 'CUSTOMER_IDS' && selectedCustomerIds.value.length === 0) {
+    return 'Selecione pelo menos um cliente.'
+  }
+  if (audienceType.value === 'SEGMENTED') {
+    return validateCampaignSegmentation(segmentFilters.value)
+  }
+  return ''
+})
 
 const displayedAudienceError = computed(() => (
   audienceTouched.value ? audienceValidationError.value : ''
 ))
 
-const audienceSummary = computed(() => {
-  if (audienceType.value === 'ALL_ELIGIBLE') return 'Todos os clientes elegíveis'
+const currentAudienceFingerprint = computed(() => campaignAudienceFingerprint(
+  audienceType.value,
+  selectedCustomerIds.value,
+  segmentFilters.value,
+))
 
-  const count = selectedCustomerIds.value.length
-  return `${count} ${count === 1 ? 'cliente selecionado' : 'clientes selecionados'}`
-})
+const audiencePreviewIsCurrent = computed(() => isCampaignPreviewCurrent(
+  audiencePreviewState.value,
+  currentAudienceFingerprint.value,
+))
+
+const audiencePreview = computed(() => (
+  audiencePreviewIsCurrent.value ? audiencePreviewState.value?.response ?? null : null
+))
+
+const audienceSummary = computed(() => campaignAudienceSummary(
+  audienceType.value,
+  selectedCustomerIds.value,
+  segmentFilters.value,
+))
 
 const confirmationDescription = computed(() => {
   const audience = audienceType.value === 'ALL_ELIGIBLE'
     ? 'os clientes elegíveis'
-    : 'os clientes selecionados'
+    : audienceType.value === 'CUSTOMER_IDS'
+      ? 'os clientes selecionados'
+      : 'o público segmentado'
 
   return messageType.value === 'IMAGE'
     ? `Esta ação irá enviar a imagem para o armazenamento seguro e preparar a campanha para ${audience}.`
@@ -413,7 +473,11 @@ async function loadCampaign() {
   customersError.value = false
   customersRequested.value = false
   selectedCustomerIds.value = []
+  segmentFilters.value = emptyCampaignSegmentForm()
   audienceTouched.value = false
+  audiencePreviewState.value = null
+  previewingAudience.value = false
+  previewError.value = ''
   messageType.value = 'TEXT'
   message.value = ''
   messageTouched.value = false
@@ -433,6 +497,12 @@ async function loadCampaign() {
 
     campaign.value = currentCampaign ?? null
     message.value = currentCampaign?.message ?? ''
+
+    if (currentCampaign) {
+      const hydratedAudience = hydrateCampaignAudience(currentCampaign)
+      audienceType.value = hydratedAudience.audienceType
+      segmentFilters.value = hydratedAudience.segmentFilters
+    }
   } catch {
     loadError.value = true
   } finally {
@@ -468,10 +538,11 @@ async function loadCustomers() {
 }
 
 function setAudienceType(type: CampaignAudienceType) {
-  if (sending.value || dispatchResult.value) return
+  if (sending.value || previewingAudience.value || dispatchResult.value) return
 
   audienceType.value = type
   audienceTouched.value = false
+  previewError.value = ''
   dispatchError.value = ''
 
   if (type === 'CUSTOMER_IDS' && !customersRequested.value) {
@@ -480,11 +551,64 @@ function setAudienceType(type: CampaignAudienceType) {
 }
 
 function setSelectedCustomerIds(ids: string[]) {
-  if (sending.value || dispatchResult.value) return
+  if (sending.value || previewingAudience.value || dispatchResult.value) return
 
   selectedCustomerIds.value = ids
   audienceTouched.value = true
+  previewError.value = ''
   dispatchError.value = ''
+}
+
+function setSegmentFilters(filters: CampaignSegmentForm) {
+  if (sending.value || previewingAudience.value || dispatchResult.value) return
+
+  segmentFilters.value = filters
+  audienceTouched.value = true
+  previewError.value = ''
+  dispatchError.value = ''
+}
+
+async function previewAudience() {
+  if (previewingAudience.value || sending.value || dispatchResult.value || !campaign.value) return
+
+  audienceTouched.value = true
+  previewError.value = ''
+  dispatchError.value = ''
+
+  if (audienceValidationError.value) return
+
+  const fingerprint = currentAudienceFingerprint.value
+  const campaignId = campaign.value.id
+  previewingAudience.value = true
+
+  try {
+    if (audienceType.value === 'SEGMENTED') {
+      campaign.value = await automationService.updateCampaignAudience(
+        campaignId,
+        buildCampaignAudienceUpdate('SEGMENTED', segmentFilters.value),
+      )
+    } else if (shouldPersistAllEligible(campaign.value)) {
+      campaign.value = await automationService.updateCampaignAudience(
+        campaignId,
+        buildCampaignAudienceUpdate('ALL_ELIGIBLE', segmentFilters.value),
+      )
+    }
+
+    if (fingerprint !== currentAudienceFingerprint.value) return
+
+    const response = await automationService.previewCampaignAudience(
+      campaignId,
+      buildCampaignAudiencePreview(audienceType.value, selectedCustomerIds.value),
+    )
+
+    if (fingerprint === currentAudienceFingerprint.value) {
+      audiencePreviewState.value = { fingerprint, response }
+    }
+  } catch (error) {
+    previewError.value = campaignPreviewError(error)
+  } finally {
+    previewingAudience.value = false
+  }
 }
 
 function setMessageType(type: CampaignMessageType) {
@@ -518,10 +642,20 @@ async function openConfirmModal() {
   } else {
     imageTouched.value = true
   }
-  if (audienceType.value === 'CUSTOMER_IDS') audienceTouched.value = true
+  audienceTouched.value = true
   dispatchError.value = ''
 
   if (!campaign.value || currentFormInvalid.value) return
+
+  if (!audiencePreviewIsCurrent.value) {
+    dispatchError.value = 'Atualize a prévia do público antes de enviar.'
+    return
+  }
+
+  if (!isCampaignAudiencePersisted(campaign.value, audienceType.value, segmentFilters.value)) {
+    dispatchError.value = 'Atualize a prévia do público antes de enviar.'
+    return
+  }
 
   confirmModalOpen.value = true
   await nextTick()
@@ -578,19 +712,6 @@ function setDispatchError(error: unknown) {
   }
 }
 
-function getAudiencePayload(): CampaignAudience {
-  if (audienceType.value === 'CUSTOMER_IDS') {
-    return {
-      type: 'CUSTOMER_IDS',
-      customerIds: [...selectedCustomerIds.value],
-    }
-  }
-
-  return {
-    type: 'ALL_ELIGIBLE',
-  }
-}
-
 async function confirmDispatch() {
   if (
     sending.value
@@ -599,8 +720,16 @@ async function confirmDispatch() {
     || currentFormInvalid.value
   ) return
 
+  if (
+    !audiencePreviewIsCurrent.value
+    || !isCampaignAudiencePersisted(campaign.value, audienceType.value, segmentFilters.value)
+  ) {
+    dispatchError.value = 'Atualize a prévia do público antes de enviar.'
+    return
+  }
+
   const campaignId = campaign.value.id
-  const audience = getAudiencePayload()
+  const audience = buildCampaignAudience(audienceType.value, selectedCustomerIds.value)
   let payload: CampaignDispatchPayload
 
   sending.value = true
