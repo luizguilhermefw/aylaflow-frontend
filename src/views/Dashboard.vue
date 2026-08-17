@@ -7,6 +7,8 @@
       </button>
     </template>
 
+      <CompanyActivationCard v-if="isPending" />
+
       <!-- Welcome Banner -->
       <div class="welcome-banner">
         <div class="welcome-content">
@@ -85,7 +87,24 @@
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
+import CompanyActivationCard from '@/components/company-access/CompanyActivationCard.vue'
+import { isPendingCompany } from '@/features/company-access/company-access.logic'
+import { companyAccessIssue } from '@/features/company-access/company-access.state'
+import { automationService } from '@/services/automation.service'
+
+const isPending = computed(() => isPendingCompany(companyAccessIssue.value))
+
+async function refreshCompanyAccess() {
+  try {
+    await automationService.list()
+  } catch {
+    // O interceptor global transforma somente os códigos conhecidos em estado de UX.
+  }
+}
+
+onMounted(refreshCompanyAccess)
 </script>
 
 <style scoped>

@@ -1,4 +1,14 @@
 import axios from 'axios'
+import {
+  companyAccessIssueFromResponse,
+  isAuthenticatedProtectedRequest,
+  shouldLogoutAfterUnauthorized,
+} from '@/features/company-access/company-access.logic'
+import {
+  announceCompanyAccessIssue,
+  clearCompanyAccessIssue,
+  clearPendingCompanyAccessIssue,
+} from '@/features/company-access/company-access.state'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -19,11 +29,28 @@ api.interceptors.request.use(
 
 // Response interceptor — trata 401 globalmente, exceto na rota de login
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const isLoginRoute = error.config?.url?.includes('/auth/login')
+  (response) => {
+    if (isAuthenticatedProtectedRequest(
+      response.config?.url,
+      Boolean(response.config?.headers?.Authorization),
+    )) {
+      clearPendingCompanyAccessIssue()
+    }
 
-    if (error.response?.status === 401 && !isLoginRoute) {
+    return response
+  },
+  (error) => {
+    const companyAccessIssue = companyAccessIssueFromResponse(
+      error.response?.status,
+      error.response?.data,
+    )
+
+    if (companyAccessIssue) {
+      announceCompanyAccessIssue(companyAccessIssue)
+    }
+
+    if (shouldLogoutAfterUnauthorized(error.response?.status, error.config?.url)) {
+      clearCompanyAccessIssue()
       localStorage.removeItem('token')
       window.location.href = '/'
     }
