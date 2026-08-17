@@ -59,19 +59,26 @@
           <h1 class="page-title">{{ title }}</h1>
           <p v-if="subtitle" class="page-subtitle">{{ subtitle }}</p>
         </div>
-        <div v-if="$slots.actions" class="topbar-actions">
+        <div v-if="$slots.actions && !showActivationGate" class="topbar-actions">
           <slot name="actions" />
         </div>
       </header>
 
-      <slot />
+      <CompanyActivationGate v-if="showActivationGate" />
+      <div class="page-content" :hidden="showActivationGate">
+        <slot />
+      </div>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth.store'
+import CompanyActivationGate from '@/components/company-access/CompanyActivationGate.vue'
+import { shouldShowCompanyActivationGate } from '@/features/company-access/company-access.logic'
+import { companyAccessIssue } from '@/features/company-access/company-access.state'
 
 defineProps<{
   title: string
@@ -80,6 +87,10 @@ defineProps<{
 
 const authStore = useAuthStore()
 const route = useRoute()
+const showActivationGate = computed(() => shouldShowCompanyActivationGate(
+  companyAccessIssue.value,
+  route.name,
+))
 
 function handleLogout() {
   authStore.logout()
@@ -233,5 +244,15 @@ function handleLogout() {
   display: flex;
   gap: 0.75rem;
   align-items: center;
+}
+
+.page-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.page-content[hidden] {
+  display: none;
 }
 </style>

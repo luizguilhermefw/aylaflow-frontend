@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
-    "test": "node --experimental-strip-types --test tests/contact.logic.test.ts tests/campaign.logic.test.ts tests/campaign-lifecycle.logic.test.ts",
+    "test": "node --experimental-strip-types --test tests/contact.logic.test.ts tests/campaign.logic.test.ts tests/campaign-lifecycle.logic.test.ts tests/company-access.logic.test.ts",
     "preview": "vite preview"
   },
   "dependencies": {
