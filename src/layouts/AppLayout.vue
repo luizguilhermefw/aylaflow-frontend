@@ -43,6 +43,19 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
           Relatórios
         </button>
+
+        <div v-if="authStore.isPlatformAdmin" class="admin-nav-section">
+          <span class="nav-section-label">Administração</span>
+          <RouterLink
+            id="nav-admin-companies"
+            to="/admin/companies"
+            class="nav-item"
+            exact-active-class="active"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M6 21V7l6-4 6 4v14"/><path d="M9 9h1"/><path d="M14 9h1"/><path d="M9 13h1"/><path d="M14 13h1"/></svg>
+            Empresas
+          </RouterLink>
+        </div>
       </nav>
 
       <div class="sidebar-footer">
@@ -73,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/store/auth.store'
 import CompanyActivationGate from '@/components/company-access/CompanyActivationGate.vue'
@@ -95,6 +108,12 @@ const showActivationGate = computed(() => shouldShowCompanyActivationGate(
 function handleLogout() {
   authStore.logout()
 }
+
+onMounted(() => {
+  void authStore.ensureProfile().catch(() => {
+    // O menu comum permanece disponível se o perfil não puder ser carregado.
+  })
+})
 </script>
 
 <style scoped>
@@ -180,6 +199,22 @@ function handleLogout() {
   font-family: inherit;
   text-align: left;
   cursor: default;
+}
+
+.admin-nav-section {
+  margin-top: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--sidebar-border);
+}
+
+.nav-section-label {
+  display: block;
+  padding: 0 0.875rem 0.45rem;
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .sidebar-footer {
