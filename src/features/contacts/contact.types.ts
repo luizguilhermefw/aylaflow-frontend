@@ -85,6 +85,8 @@ export interface ContactFormValues {
   lastPurchaseDate: string
 }
 
+export type ContactFormErrors = Partial<Record<keyof ContactFormValues, string>>
+
 export interface ContactFilterValues {
   gender: '' | CustomerGender
   city: string

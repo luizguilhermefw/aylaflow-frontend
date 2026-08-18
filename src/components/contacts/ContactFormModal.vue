@@ -30,9 +30,10 @@
               maxlength="160"
               :disabled="saving"
               :aria-invalid="Boolean(errors.name)"
+              :aria-describedby="errors.name ? 'contact-name-error' : undefined"
               @input="clearFieldError('name')"
             />
-            <span class="field-error" aria-live="polite">{{ errors.name }}</span>
+            <span id="contact-name-error" class="field-error" aria-live="polite">{{ errors.name }}</span>
           </div>
 
           <div class="form-field form-field-wide">
@@ -46,9 +47,10 @@
               placeholder="(11) 99999-9999"
               :disabled="saving"
               :aria-invalid="Boolean(errors.phone)"
+              :aria-describedby="errors.phone ? 'contact-phone-error' : undefined"
               @input="clearFieldError('phone')"
             />
-            <span class="field-error" aria-live="polite">{{ errors.phone }}</span>
+            <span id="contact-phone-error" class="field-error" aria-live="polite">{{ errors.phone }}</span>
           </div>
 
           <div class="form-field">
@@ -67,12 +69,13 @@
               v-model="form.state"
               :disabled="saving"
               :aria-invalid="Boolean(errors.state)"
+              :aria-describedby="errors.state ? 'contact-state-error' : undefined"
               @change="clearFieldError('state')"
             >
               <option value="">Não informada</option>
               <option v-for="state in BRAZILIAN_STATES" :key="state" :value="state">{{ state }}</option>
             </select>
-            <span class="field-error" aria-live="polite">{{ errors.state }}</span>
+            <span id="contact-state-error" class="field-error" aria-live="polite">{{ errors.state }}</span>
           </div>
 
           <div class="form-field form-field-wide">
@@ -96,9 +99,10 @@
               type="date"
               :disabled="saving"
               :aria-invalid="Boolean(errors.birthDate)"
+              :aria-describedby="errors.birthDate ? 'contact-birth-date-error' : undefined"
               @input="clearFieldError('birthDate')"
             />
-            <span class="field-error" aria-live="polite">{{ errors.birthDate }}</span>
+            <span id="contact-birth-date-error" class="field-error" aria-live="polite">{{ errors.birthDate }}</span>
           </div>
 
           <div class="form-field">
@@ -130,7 +134,11 @@ import {
   emptyContactForm,
   validateContactForm,
 } from '@/features/contacts/contact.logic'
-import type { ContactFormValues, Customer } from '@/features/contacts/contact.types'
+import type {
+  ContactFormErrors,
+  ContactFormValues,
+  Customer,
+} from '@/features/contacts/contact.types'
 
 const props = defineProps<{
   open: boolean
@@ -138,6 +146,7 @@ const props = defineProps<{
   customer: Customer | null
   saving: boolean
   serverError: string
+  serverFieldErrors: ContactFormErrors
 }>()
 
 const emit = defineEmits<{
@@ -149,11 +158,17 @@ const emit = defineEmits<{
 const titleId = 'contact-form-title'
 const nameInput = ref<HTMLInputElement | null>(null)
 const form = reactive<ContactFormValues>(emptyContactForm())
-const errors = reactive<Record<string, string>>({})
+const errors = reactive<ContactFormErrors>({})
+
+function clearFormErrors() {
+  for (const key of Object.keys(errors) as Array<keyof ContactFormValues>) {
+    delete errors[key]
+  }
+}
 
 function resetForm() {
   Object.assign(form, props.customer ? contactToForm(props.customer) : emptyContactForm())
-  Object.keys(errors).forEach((key) => delete errors[key])
+  clearFormErrors()
 }
 
 watch(
@@ -166,7 +181,15 @@ watch(
   },
 )
 
-function clearFieldError(field: string) {
+watch(
+  () => props.serverFieldErrors,
+  (serverFieldErrors) => {
+    Object.assign(errors, serverFieldErrors)
+  },
+  { deep: true },
+)
+
+function clearFieldError(field: keyof ContactFormValues) {
   delete errors[field]
   emit('clear-error')
 }
@@ -176,7 +199,7 @@ function requestClose() {
 }
 
 function submitForm() {
-  Object.keys(errors).forEach((key) => delete errors[key])
+  clearFormErrors()
   Object.assign(errors, validateContactForm(form, {
     originalBirthDate: props.mode === 'edit' ? props.customer?.birthDate : null,
   }))
