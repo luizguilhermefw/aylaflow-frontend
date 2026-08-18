@@ -40,11 +40,17 @@ const router = createRouter({
       component: () => import('@/views/Contacts.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/admin/companies',
+      name: 'admin-companies',
+      component: () => import('@/views/admin/AdminCompanies.vue'),
+      meta: { requiresAuth: true, requiresPlatformAdmin: true },
+    },
   ],
 })
 
 // Auth guard
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore()
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
@@ -53,6 +59,18 @@ router.beforeEach((to) => {
 
   if (to.meta.requiresGuest && authStore.isAuthenticated) {
     return { name: 'dashboard' }
+  }
+
+  if (to.meta.requiresPlatformAdmin) {
+    try {
+      await authStore.ensureProfile()
+    } catch {
+      return { name: 'dashboard' }
+    }
+
+    if (!authStore.isPlatformAdmin) {
+      return { name: 'dashboard' }
+    }
   }
 })
 
