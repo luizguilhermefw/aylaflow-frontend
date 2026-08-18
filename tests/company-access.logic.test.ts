@@ -52,6 +52,7 @@ test('COMPANY_PENDING permite Dashboard e usa gate nos módulos', () => {
   const issue = companyAccessIssueFromCode('COMPANY_PENDING')
   assert.equal(shouldShowCompanyActivationGate(issue, 'dashboard'), false)
   assert.equal(shouldShowCompanyActivationGate(issue, 'campaigns'), true)
+  assert.equal(shouldShowCompanyActivationGate(issue, 'automations'), true)
   assert.equal(shouldShowCompanyActivationGate(issue, 'contacts'), true)
   assert.equal(shouldShowCompanyActivationGate(issue, 'campaign-detail'), true)
 })

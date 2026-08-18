@@ -1,15 +1,26 @@
 import api from './api'
 import { createCampaignRepository } from '@/features/campaigns/campaign.logic'
 import type { CampaignHttpClient } from '@/features/campaigns/campaign.logic'
+import {
+  createRecurringAutomationRepository,
+  type AutomationHttpClient,
+  type CreateRecurringAutomationPayload,
+  type UpdateRecurringAutomationPayload,
+} from '@/features/automations/automation.repository'
 import type {
   CampaignAudience,
   CampaignAudiencePreviewResponse,
   CampaignAudienceType,
   CampaignAudienceUpdatePayload,
   CampaignSegmentGender,
-  AutomationLifecycleUpdatePayload,
   DeleteAutomationResponse,
 } from '@/features/campaigns/campaign.types'
+
+export type {
+  CreateRecurringAutomationPayload,
+  RecurringAutomationType,
+  UpdateRecurringAutomationPayload,
+} from '@/features/automations/automation.repository'
 
 export type {
   CampaignAudience,
@@ -34,6 +45,7 @@ export interface Automation {
   cooldownHours: number
   isActive: boolean
   isSystem: boolean
+  systemKey: string | null
   createdAt: string
   campaignAudienceType: CampaignAudienceType
   segmentGender: CampaignSegmentGender | null
@@ -77,9 +89,10 @@ export interface CampaignDispatchResponse {
 
 export interface AutomationService {
   list(): Promise<Automation[]>
+  createAutomation(payload: CreateRecurringAutomationPayload): Promise<Automation>
   createCampaign(payload: CreateCampaignPayload): Promise<Automation>
   updateCampaignAudience(id: string, payload: CampaignAudienceUpdatePayload): Promise<Automation>
-  updateAutomation(id: string, payload: AutomationLifecycleUpdatePayload): Promise<Automation>
+  updateAutomation(id: string, payload: UpdateRecurringAutomationPayload): Promise<Automation>
   deleteAutomation(id: string): Promise<DeleteAutomationResponse<Automation>>
   previewCampaignAudience(
     id: string,
@@ -88,8 +101,18 @@ export interface AutomationService {
   dispatchCampaign(id: string, payload: CampaignDispatchPayload): Promise<CampaignDispatchResponse>
 }
 
-export const automationService: AutomationService = createCampaignRepository<
+const campaignRepository = createCampaignRepository<
   Automation,
   CampaignDispatchPayload,
   CampaignDispatchResponse
 >(api as CampaignHttpClient)
+
+const recurringAutomationRepository = createRecurringAutomationRepository<
+  Automation,
+  DeleteAutomationResponse<Automation>
+>(api as AutomationHttpClient)
+
+export const automationService: AutomationService = {
+  ...campaignRepository,
+  ...recurringAutomationRepository,
+}
