@@ -8,6 +8,7 @@ export interface CompanyAccessIssue {
   code: CompanyAccessCode
   title: string
   description: string
+  guidance?: string
 }
 
 export const COMPANY_PENDING_ONBOARDING_COPY = {
@@ -27,14 +28,17 @@ const COMPANY_ACCESS_ISSUES: Record<CompanyAccessCode, Omit<CompanyAccessIssue, 
   COMPANY_SUSPENDED: {
     title: 'Conta temporariamente suspensa',
     description: 'O acesso aos recursos do AylaFlow está temporariamente suspenso.',
+    guidance: 'Para regularizar o acesso, entre em contato com a equipe AylaFlow.',
   },
   COMPANY_CANCELLED: {
     title: 'Conta cancelada',
-    description: 'Esta conta não está mais ativa no AylaFlow.',
+    description: 'Esta empresa não possui mais acesso aos recursos do AylaFlow.',
+    guidance: 'Caso precise de informações sobre o cancelamento ou uma nova contratação, entre em contato com a equipe AylaFlow.',
   },
   COMPANY_INVALID_STATUS: {
     title: 'Conta indisponível',
     description: 'Não foi possível liberar os recursos desta conta no momento.',
+    guidance: 'Para obter mais informações, entre em contato com a equipe AylaFlow.',
   },
 }
 

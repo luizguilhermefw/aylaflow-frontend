@@ -5,7 +5,7 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="company-access-title"
-      aria-describedby="company-access-description"
+      aria-describedby="company-access-description company-access-guidance"
     >
       <div class="status-icon" aria-hidden="true">
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M6 21V7l6-4 6 4v14"/><path d="M9 9h1"/><path d="M14 9h1"/><path d="M9 13h1"/><path d="M14 13h1"/><path d="M9 17h6"/></svg>
@@ -14,7 +14,9 @@
       <span class="eyebrow">Acesso à empresa</span>
       <h1 id="company-access-title">{{ issue.title }}</h1>
       <p id="company-access-description">{{ issue.description }}</p>
-      <p class="session-help">Sua sessão continua segura. Saia da conta para acessar com outro usuário.</p>
+      <p v-if="issue.guidance" id="company-access-guidance" class="company-access-guidance">
+        {{ issue.guidance }}
+      </p>
 
       <button ref="logoutButton" type="button" class="logout-button" @click="handleLogout">
         Sair da conta
@@ -110,7 +112,7 @@ h1 {
   line-height: 1.6;
 }
 
-.session-help {
+.company-access-guidance {
   margin-top: 1rem;
   color: var(--text-muted);
   font-size: 0.78rem;
