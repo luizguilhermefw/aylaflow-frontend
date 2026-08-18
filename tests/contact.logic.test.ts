@@ -597,21 +597,74 @@ test('cria contato e o adiciona ao início da lista', async () => {
   assert.equal(controller.state.contacts[0]?.id, 'customer-2')
 })
 
-test('apresenta mensagem amigável em conflito 409', async () => {
+test('associa conflito 409 ao campo phone', async () => {
   const controller = createContactsController(repository({
     create: async () => { throw { response: { status: 409 } } },
   }))
   const result = await controller.create({ name: 'Maria', phone: '11999999999' })
   assert.equal(result, null)
-  assert.equal(controller.state.saveError, 'Já existe um contato com esse telefone.')
+  assert.equal(controller.state.saveFieldErrors.phone, 'Já existe um contato cadastrado com este telefone.')
+  assert.equal(controller.state.saveError, 'Revise os campos destacados.')
 })
 
-test('apresenta mensagem amigável para payload inválido 400', async () => {
+test('associa telefone inválido rejeitado pelo backend ao campo phone', async () => {
   const controller = createContactsController(repository({
-    create: async () => { throw { response: { status: 400 } } },
+    create: async () => {
+      throw { response: { status: 400, data: { message: ['phone must be a valid phone number'] } } }
+    },
   }))
   await controller.create({ name: 'Maria', phone: 'inválido' })
-  assert.equal(controller.state.saveError, 'Revise os dados informados e tente novamente.')
+  assert.equal(controller.state.saveFieldErrors.phone, 'Informe um telefone válido com DDD.')
+  assert.equal(controller.state.saveError, 'Revise os campos destacados.')
+})
+
+test('edição também associa telefone inválido ao campo phone', async () => {
+  const original = customer()
+  const controller = createContactsController(repository({
+    update: async () => {
+      throw { response: { status: 400, data: { message: 'telefone inválido' } } }
+    },
+  }))
+
+  await controller.update(original.id, { name: original.name, phone: 'inválido' })
+
+  assert.equal(controller.state.saveFieldErrors.phone, 'Informe um telefone válido com DDD.')
+  assert.equal(controller.state.saveError, 'Revise os campos destacados.')
+})
+
+test('erro de campo não altera os demais valores informados no formulário', async () => {
+  const form = {
+    ...emptyContactForm(),
+    name: 'Maria Oliveira',
+    phone: 'inválido',
+    gender: 'FEMALE' as const,
+    city: 'Campinas',
+    state: 'SP',
+    birthDate: '1990-05-10',
+    lastPurchaseDate: '2026-08-01',
+  }
+  const originalValues = { ...form }
+  const controller = createContactsController(repository({
+    create: async () => {
+      throw { response: { status: 400, data: { message: 'phone is invalid' } } }
+    },
+  }))
+
+  await controller.create(buildCustomerPayload(form))
+
+  assert.deepEqual(form, originalValues)
+  assert.equal(controller.state.saveFieldErrors.phone, 'Informe um telefone válido com DDD.')
+})
+
+test('erro desconhecido usa feedback genérico seguro', async () => {
+  const controller = createContactsController(repository({
+    create: async () => { throw new Error('SQL connection failed') },
+  }))
+
+  await controller.create({ name: 'Maria', phone: '11999999999' })
+
+  assert.deepEqual(controller.state.saveFieldErrors, {})
+  assert.equal(controller.state.saveError, 'Não foi possível salvar o contato. Tente novamente.')
 })
 
 test('edita um contato sem duplicá-lo na lista', async () => {
@@ -934,6 +987,27 @@ test('mantém datas opcionais fora do formulário e envia última compra como nu
   assert.equal(form.lastPurchaseDate, '')
   assert.equal('birthDate' in payload, false)
   assert.equal(payload.lastPurchaseDate, null)
+})
+
+test('telefone é obrigatório sem reproduzir validação completa no frontend', () => {
+  const errors = validateContactForm({
+    ...emptyContactForm(),
+    name: 'Contato novo',
+    phone: '   ',
+  })
+
+  assert.equal(errors.phone, 'Informe o telefone do contato.')
+})
+
+test('payload preserva o telefone informado sem canonicalização local', () => {
+  const phone = '+55 (11) 99999-9999'
+  const payload = buildCustomerPayload({
+    ...emptyContactForm(),
+    name: 'Contato novo',
+    phone,
+  })
+
+  assert.equal(payload.phone, phone)
 })
 
 test('cadastro sem birthDate continua válido', () => {

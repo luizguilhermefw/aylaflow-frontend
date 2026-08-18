@@ -127,8 +127,9 @@
     :customer="editingCustomer"
     :saving="state.saving"
     :server-error="state.saveError"
+    :server-field-errors="state.saveFieldErrors"
     @close="closeFormModal"
-    @clear-error="state.saveError = ''"
+    @clear-error="clearSaveFeedback"
     @submit="saveContact"
   />
 
@@ -384,7 +385,7 @@ async function changePage(page: number) {
 
 function openCreateModal() {
   successMessage.value = ''
-  state.saveError = ''
+  clearSaveFeedback()
   editingCustomer.value = null
   formMode.value = 'create'
   formModalOpen.value = true
@@ -392,7 +393,7 @@ function openCreateModal() {
 
 function openEditModal(customer: Customer) {
   successMessage.value = ''
-  state.saveError = ''
+  clearSaveFeedback()
   editingCustomer.value = customer
   formMode.value = 'edit'
   formModalOpen.value = true
@@ -425,7 +426,12 @@ function closeFormModal() {
   if (state.saving) return
   formModalOpen.value = false
   editingCustomer.value = null
+  clearSaveFeedback()
+}
+
+function clearSaveFeedback() {
   state.saveError = ''
+  state.saveFieldErrors = {}
 }
 
 async function saveContact(values: ContactFormValues) {

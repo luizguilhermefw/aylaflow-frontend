@@ -1,6 +1,7 @@
 import type {
   ContactConsentStatus,
   ContactFilterValues,
+  ContactFormErrors,
   ContactFormValues,
   Customer,
   CustomerAutomationUpdate,
@@ -179,11 +180,11 @@ export interface ContactValidationContext {
 export function validateContactForm(
   form: ContactFormValues,
   context: ContactValidationContext = {},
-): Record<string, string> {
-  const errors: Record<string, string> = {}
+): ContactFormErrors {
+  const errors: ContactFormErrors = {}
 
   if (!form.name.trim()) errors.name = 'O nome é obrigatório.'
-  if (!form.phone.trim()) errors.phone = 'O telefone é obrigatório.'
+  if (!form.phone.trim()) errors.phone = 'Informe o telefone do contato.'
   if (context.originalBirthDate && !form.birthDate) {
     errors.birthDate = 'A data de nascimento não pode ser removida neste momento.'
   }
@@ -259,14 +260,20 @@ function errorStatus(error: unknown): number | undefined {
 }
 
 function backendErrorMessage(error: unknown): string | undefined {
-  if (typeof error !== 'object' || error === null || !('response' in error)) return undefined
+  return backendErrorMessages(error)[0]
+}
+
+function backendErrorMessages(error: unknown): string[] {
+  if (typeof error !== 'object' || error === null || !('response' in error)) return []
   const response = error.response
-  if (typeof response !== 'object' || response === null || !('data' in response)) return undefined
+  if (typeof response !== 'object' || response === null || !('data' in response)) return []
   const data = response.data
-  if (typeof data !== 'object' || data === null || !('message' in data)) return undefined
-  if (typeof data.message === 'string') return data.message
-  if (Array.isArray(data.message)) return data.message.find((message): message is string => typeof message === 'string')
-  return undefined
+  if (typeof data !== 'object' || data === null || !('message' in data)) return []
+  if (typeof data.message === 'string') return [data.message]
+  if (Array.isArray(data.message)) {
+    return data.message.filter((message): message is string => typeof message === 'string')
+  }
+  return []
 }
 
 export function customerImportError(error: unknown, operation: 'template' | 'preview' | 'execute'): string {
@@ -292,11 +299,32 @@ export function customerImportError(error: unknown, operation: 'template' | 'pre
   return 'Não foi possível concluir a importação. Tente novamente.'
 }
 
-export function customerSaveError(error: unknown): string {
+export interface CustomerSaveFeedback {
+  fieldErrors: ContactFormErrors
+  formError: string
+}
+
+export function customerSaveFeedback(error: unknown): CustomerSaveFeedback {
   const status = errorStatus(error)
-  if (status === 409) return 'Já existe um contato com esse telefone.'
-  if (status === 400) return 'Revise os dados informados e tente novamente.'
-  return 'Não foi possível salvar o contato. Tente novamente.'
+  if (status === 409) {
+    return {
+      fieldErrors: { phone: 'Já existe um contato cadastrado com este telefone.' },
+      formError: 'Revise os campos destacados.',
+    }
+  }
+
+  const hasPhoneError = backendErrorMessages(error).some((message) => /\bphone\b|telefone/i.test(message))
+  if (status === 400 && hasPhoneError) {
+    return {
+      fieldErrors: { phone: 'Informe um telefone válido com DDD.' },
+      formError: 'Revise os campos destacados.',
+    }
+  }
+
+  return {
+    fieldErrors: {},
+    formError: 'Não foi possível salvar o contato. Tente novamente.',
+  }
 }
 
 export interface CustomerRepository {
@@ -383,6 +411,7 @@ export interface ContactsState {
   loadError: boolean
   saving: boolean
   saveError: string
+  saveFieldErrors: ContactFormErrors
   actionLoading: boolean
   actionError: string
 }
@@ -395,6 +424,7 @@ export function emptyContactsState(): ContactsState {
     loadError: false,
     saving: false,
     saveError: '',
+    saveFieldErrors: {},
     actionLoading: false,
     actionError: '',
   }
@@ -430,13 +460,16 @@ export function createContactsController(
   async function create(payload: CustomerMutationPayload): Promise<Customer | null> {
     state.saving = true
     state.saveError = ''
+    state.saveFieldErrors = {}
 
     try {
       const customer = await repository.create(payload)
       state.contacts = [customer, ...state.contacts]
       return customer
     } catch (error) {
-      state.saveError = customerSaveError(error)
+      const feedback = customerSaveFeedback(error)
+      state.saveError = feedback.formError
+      state.saveFieldErrors = feedback.fieldErrors
       return null
     } finally {
       state.saving = false
@@ -446,13 +479,16 @@ export function createContactsController(
   async function update(id: string, payload: CustomerMutationPayload): Promise<Customer | null> {
     state.saving = true
     state.saveError = ''
+    state.saveFieldErrors = {}
 
     try {
       const customer = await repository.update(id, payload)
       state.contacts = state.contacts.map((item) => item.id === id ? customer : item)
       return customer
     } catch (error) {
-      state.saveError = customerSaveError(error)
+      const feedback = customerSaveFeedback(error)
+      state.saveError = feedback.formError
+      state.saveFieldErrors = feedback.fieldErrors
       return null
     } finally {
       state.saving = false
