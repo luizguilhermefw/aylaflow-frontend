@@ -60,13 +60,15 @@ test('mapeia COMPANY_SUSPENDED sem atribuir motivo', () => {
   const issue = companyAccessIssueFromCode('COMPANY_SUSPENDED')
   assert.equal(issue?.title, 'Conta temporariamente suspensa')
   assert.equal(issue?.description, 'O acesso aos recursos do AylaFlow está temporariamente suspenso.')
+  assert.equal(issue?.guidance, 'Para regularizar o acesso, entre em contato com a equipe AylaFlow.')
   assert.equal(isBlockingCompanyStatus(issue), true)
 })
 
 test('mapeia COMPANY_CANCELLED sem sugerir acesso permitido', () => {
   const issue = companyAccessIssueFromCode('COMPANY_CANCELLED')
   assert.equal(issue?.title, 'Conta cancelada')
-  assert.equal(issue?.description, 'Esta conta não está mais ativa no AylaFlow.')
+  assert.equal(issue?.description, 'Esta empresa não possui mais acesso aos recursos do AylaFlow.')
+  assert.equal(issue?.guidance, 'Caso precise de informações sobre o cancelamento ou uma nova contratação, entre em contato com a equipe AylaFlow.')
   assert.equal(isBlockingCompanyStatus(issue), true)
 })
 
@@ -74,6 +76,7 @@ test('mapeia COMPANY_INVALID_STATUS com mensagem genérica segura', () => {
   const issue = companyAccessIssueFromCode('COMPANY_INVALID_STATUS')
   assert.equal(issue?.title, 'Conta indisponível')
   assert.equal(issue?.description, 'Não foi possível liberar os recursos desta conta no momento.')
+  assert.equal(issue?.guidance, 'Para obter mais informações, entre em contato com a equipe AylaFlow.')
   assert.equal(isBlockingCompanyStatus(issue), true)
 })
 
