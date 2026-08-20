@@ -54,6 +54,7 @@ test('COMPANY_PENDING permite Dashboard e usa gate nos módulos', () => {
   assert.equal(shouldShowCompanyActivationGate(issue, 'campaigns'), true)
   assert.equal(shouldShowCompanyActivationGate(issue, 'automations'), true)
   assert.equal(shouldShowCompanyActivationGate(issue, 'contacts'), true)
+  assert.equal(shouldShowCompanyActivationGate(issue, 'settings'), true)
   assert.equal(shouldShowCompanyActivationGate(issue, 'campaign-detail'), true)
 })
 
