@@ -25,6 +25,7 @@
   /* Inputs */
   --input-bg: rgba(255, 255, 255, 0.05);
   --input-border: rgba(255, 255, 255, 0.1);
+  --native-control-color-scheme: dark;
 
   /* Navigation */
   --nav-hover: rgba(255, 255, 255, 0.06);
@@ -79,6 +80,27 @@ a {
 
 button {
   font-family: inherit;
+}
+
+/* Native select popups need explicit colors on Windows/Chrome/Firefox. */
+select {
+  color-scheme: var(--native-control-color-scheme);
+}
+
+select option {
+  color: var(--text-primary);
+  background-color: var(--sidebar-bg);
+}
+
+select option:checked,
+select option:hover {
+  color: var(--text-primary);
+  background-color: var(--brand);
+}
+
+select option:disabled {
+  color: var(--text-muted);
+  background-color: var(--sidebar-bg);
 }
 
 /* ── Scrollbar ── */
