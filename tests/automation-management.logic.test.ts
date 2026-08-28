@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
+  automationChannelOptions,
+  automationConfiguredChannelLabel,
   automationEditCapabilities,
   automationFormFromAutomation,
   automationFormError,
@@ -14,7 +16,9 @@ import {
   createAutomationManagementController,
   emptyAutomationForm,
   emptyAutomationManagementState,
+  eligibleWhatsappChannels,
   filterManagedAutomations,
+  initialWhatsappChannelIdForCreate,
   positiveInteger,
   validateAutomationForm,
 } from '../src/features/automations/automation-management.logic.ts'
@@ -29,6 +33,7 @@ import {
 } from '../src/features/automations/automation.repository.ts'
 import type { AutomationHttpClient } from '../src/features/automations/automation.repository.ts'
 import type { Automation, AutomationType } from '../src/services/automation.service.ts'
+import type { WhatsappChannel } from '../src/services/whatsapp-channel.service.ts'
 
 function automation(
   type: AutomationType = 'REACTIVATION',
@@ -44,6 +49,7 @@ function automation(
     isActive: true,
     isSystem: true,
     systemKey: null,
+    messagingChannelId: 'channel-1',
     createdAt: '2026-08-01T12:00:00.000Z',
     campaignAudienceType: 'ALL_ELIGIBLE',
     segmentGender: null,
@@ -64,6 +70,19 @@ function validForm(overrides: Partial<AutomationFormValues> = {}): AutomationFor
     daysAfter: '30',
     message: 'Olá! Estamos com saudades.',
     cooldownHours: '24',
+    messagingChannelId: 'channel-1',
+    ...overrides,
+  }
+}
+
+function whatsappChannel(
+  overrides: Partial<WhatsappChannel> = {},
+): WhatsappChannel {
+  return {
+    id: 'channel-1',
+    connectionStatus: 'CONNECTED',
+    connectedPhone: '5545991335359',
+    isActive: true,
     ...overrides,
   }
 }
@@ -80,6 +99,7 @@ function repository(
         message: payload.message,
         daysAfter: payload.daysAfter,
         cooldownHours: payload.cooldownHours ?? 24,
+        messagingChannelId: payload.messagingChannelId,
         isSystem: false,
       })
     },
@@ -98,6 +118,352 @@ test('router registra /automations autenticada e menu usa RouterLink real', () =
   assert.match(routerSource, /path: '\/automations'[\s\S]*name: 'automations'[\s\S]*requiresAuth: true/)
   assert.match(layoutSource, /<RouterLink[\s\S]*id="nav-automations"[\s\S]*to="\/automations"/)
   assert.doesNotMatch(layoutSource, /<button[^>]*id="nav-automations"/)
+})
+
+test('Automation aceita messagingChannelId string ou null', () => {
+  assert.equal(automation('REACTIVATION', { messagingChannelId: 'channel-2' }).messagingChannelId,
+    'channel-2')
+  assert.equal(automation('BIRTHDAY', { messagingChannelId: null }).messagingChannelId, null)
+})
+
+test('Automations reutiliza whatsappChannelService para carregar a listagem base', () => {
+  const viewSource = readFileSync(new URL('../src/views/Automations.vue', import.meta.url), 'utf8')
+  const serviceSource = readFileSync(
+    new URL('../src/services/whatsapp-channel.service.ts', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(viewSource, /whatsappChannelService\.listWhatsappChannels\(\)/)
+  assert.match(viewSource, /from '@\/services\/whatsapp-channel\.service'/)
+  assert.doesNotMatch(viewSource, /getWhatsappChannelConnection|syncChannelConnection/)
+  assert.doesNotMatch(`${viewSource}\n${serviceSource}`, /axios\.create/)
+})
+
+test('somente routing ACTIVE entra nas novas opções elegíveis', () => {
+  const active = whatsappChannel({ id: 'active', isActive: true })
+  const inactive = whatsappChannel({ id: 'inactive', isActive: false })
+
+  assert.deepEqual(eligibleWhatsappChannels([active, inactive]), [active])
+  assert.deepEqual(
+    automationChannelOptions([active, inactive], null).map((option) => option.id),
+    ['active'],
+  )
+})
+
+test('connectionStatus não substitui routing na elegibilidade', () => {
+  const activeDisconnected = whatsappChannel({
+    id: 'active-disconnected',
+    isActive: true,
+    connectionStatus: 'DISCONNECTED',
+  })
+  const inactiveConnected = whatsappChannel({
+    id: 'inactive-connected',
+    isActive: false,
+    connectionStatus: 'CONNECTED',
+  })
+
+  assert.deepEqual(
+    eligibleWhatsappChannels([activeDisconnected, inactiveConnected]).map((item) => item.id),
+    ['active-disconnected'],
+  )
+})
+
+test('zero canais ACTIVE não inventa seleção', () => {
+  const channels = [
+    whatsappChannel({ id: 'inactive', isActive: false }),
+  ]
+
+  assert.equal(initialWhatsappChannelIdForCreate(channels), '')
+  assert.deepEqual(automationChannelOptions(channels, null), [])
+})
+
+test('um canal ACTIVE é pré-selecionado somente na criação', () => {
+  assert.equal(
+    initialWhatsappChannelIdForCreate([
+      whatsappChannel({ id: 'only-active', connectionStatus: 'UNKNOWN' }),
+      whatsappChannel({ id: 'inactive', isActive: false }),
+    ]),
+    'only-active',
+  )
+  const modalSource = readFileSync(
+    new URL('../src/features/automations/AutomationFormModal.vue', import.meta.url),
+    'utf8',
+  )
+  assert.match(modalSource, /mode !== 'create'/)
+  assert.match(modalSource, /initialWhatsappChannelIdForCreate\(props\.channels\)/)
+})
+
+test('múltiplos canais ACTIVE não criam default implícito', () => {
+  assert.equal(initialWhatsappChannelIdForCreate([
+    whatsappChannel({ id: 'channel-1' }),
+    whatsappChannel({ id: 'channel-2' }),
+  ]), '')
+})
+
+test('criação com múltiplos canais exige escolha explícita', () => {
+  const form = validForm({ messagingChannelId: '' })
+
+  assert.equal(
+    validateAutomationForm(form, 'create').messagingChannelId,
+    'Selecione um canal WhatsApp habilitado para envios.',
+  )
+  assert.equal(buildCreateAutomationPayload(form), null)
+})
+
+test('payload CREATE envia somente ID do canal e campos legítimos', () => {
+  const payload = buildCreateAutomationPayload(validForm({ messagingChannelId: 'channel-2' }))
+
+  assert.deepEqual(payload, {
+    name: 'Retorno de clientes',
+    type: 'REACTIVATION',
+    daysAfter: 30,
+    message: 'Olá! Estamos com saudades.',
+    cooldownHours: 24,
+    messagingChannelId: 'channel-2',
+  })
+  assert.equal('companyId' in payload!, false)
+  assert.equal('channel' in payload!, false)
+  assert.equal(typeof payload?.messagingChannelId, 'string')
+})
+
+test('edição hidrata exatamente o messagingChannelId persistido', () => {
+  const existing = automation('REACTIVATION', { messagingChannelId: 'persisted-channel' })
+
+  assert.equal(
+    automationFormFromAutomation(existing).messagingChannelId,
+    'persisted-channel',
+  )
+  assert.equal(automationFormFromAutomation(
+    automation('REACTIVATION', { messagingChannelId: null }),
+  ).messagingChannelId, '')
+})
+
+test('PATCH envia somente o messagingChannelId real quando o canal muda', () => {
+  const existing = automation('REACTIVATION', {
+    isSystem: false,
+    messagingChannelId: 'channel-1',
+  })
+  const payload = buildUpdateAutomationPayload(
+    existing,
+    automationFormFromAutomation(existing),
+  )
+  assert.equal('messagingChannelId' in payload!, false)
+
+  assert.deepEqual(buildUpdateAutomationPayload(existing, {
+    ...automationFormFromAutomation(existing),
+    messagingChannelId: 'channel-2',
+  }), {
+    name: existing.name,
+    message: existing.message,
+    daysAfter: existing.daysAfter,
+    cooldownHours: existing.cooldownHours,
+    messagingChannelId: 'channel-2',
+  })
+})
+
+test('falha de PATCH preserva o canal anterior no card e no formulário', async () => {
+  const existing = automation('REACTIVATION', {
+    isSystem: false,
+    messagingChannelId: 'channel-1',
+  })
+  const form = {
+    ...automationFormFromAutomation(existing),
+    messagingChannelId: 'channel-2',
+  }
+  const state = emptyAutomationManagementState()
+  state.automations = [existing]
+  const controller = createAutomationManagementController(repository({
+    async updateAutomation() { throw new Error('internal detail') },
+  }), state)
+
+  assert.equal(await controller.updateAutomation(existing, form), false)
+  assert.equal(state.automations[0]?.messagingChannelId, 'channel-1')
+  assert.equal(form.messagingChannelId, 'channel-2')
+  assert.equal(state.formError, 'Não foi possível concluir a operação. Tente novamente.')
+})
+
+test('canal atual INACTIVE permanece visível sem fallback silencioso', () => {
+  const active = whatsappChannel({ id: 'active' })
+  const currentInactive = whatsappChannel({
+    id: 'current-inactive',
+    isActive: false,
+    connectedPhone: null,
+  })
+  const options = automationChannelOptions([active, currentInactive], currentInactive.id)
+
+  assert.deepEqual(options.map((option) => option.id), ['active', 'current-inactive'])
+  assert.equal(options[1]?.disabled, true)
+  assert.match(options[1]?.label ?? '', /inativo para novos envios/)
+})
+
+test('canal persistido ausente aparece sem expor UUID', () => {
+  const missingId = '11111111-1111-4111-8111-111111111111'
+  const options = automationChannelOptions([whatsappChannel()], missingId)
+
+  assert.deepEqual(options.at(-1), {
+    id: missingId,
+    label: 'Canal indisponível',
+    disabled: true,
+  })
+  assert.equal(automationConfiguredChannelLabel(missingId, [whatsappChannel()]),
+    'Canal indisponível')
+  assert.doesNotMatch(options.at(-1)?.label ?? '', /11111111/)
+})
+
+test('card usa label amigável do canal configurado', () => {
+  const channels = [
+    whatsappChannel({ id: 'channel-1', connectedPhone: null }),
+    whatsappChannel({ id: 'channel-2', connectedPhone: '5545991335359' }),
+  ]
+  const viewSource = readFileSync(new URL('../src/views/Automations.vue', import.meta.url), 'utf8')
+
+  assert.equal(
+    automationConfiguredChannelLabel('channel-2', channels),
+    'WhatsApp 2 — (45) 99133-5359',
+  )
+  assert.equal(automationConfiguredChannelLabel(null, channels), 'Canal não definido')
+  assert.match(viewSource, /<dt>Canal WhatsApp<\/dt>/)
+  assert.match(viewSource, /configuredChannelLabel\(automation\)/)
+})
+
+test('connectedPhone é somente apresentação e não altera o canal', () => {
+  const channel = whatsappChannel({ connectedPhone: '5545991335359' })
+  const before = structuredClone(channel)
+
+  assert.equal(
+    automationConfiguredChannelLabel(channel.id, [channel]),
+    'WhatsApp 1 — (45) 99133-5359',
+  )
+  assert.deepEqual(channel, before)
+})
+
+test('connectedPhone null mantém label limpo no seletor', () => {
+  const channel = whatsappChannel({ connectedPhone: null })
+
+  assert.equal(automationConfiguredChannelLabel(channel.id, [channel]), 'WhatsApp 1')
+  assert.equal(automationChannelOptions([channel], null)[0]?.label, 'WhatsApp 1')
+  assert.doesNotMatch(automationChannelOptions([channel], null)[0]?.label ?? '',
+    /Número não identificado/)
+})
+
+test('UI de automações não renderiza IDs nem segredos técnicos', () => {
+  const modalSource = readFileSync(
+    new URL('../src/features/automations/AutomationFormModal.vue', import.meta.url),
+    'utf8',
+  )
+  const viewSource = readFileSync(new URL('../src/views/Automations.vue', import.meta.url), 'utf8')
+  const forbidden = /instanceName|provisioningKey|apiKey|webhookSecret|EVOLUTION_API_KEY/
+
+  assert.doesNotMatch(`${modalSource}\n${viewSource}`, forbidden)
+  assert.doesNotMatch(viewSource, /\{\{\s*automation\.messagingChannelId\s*\}\}/)
+  assert.doesNotMatch(modalSource, /\{\{\s*option\.id\s*\}\}/)
+})
+
+test('não cria client HTTP ou repository paralelo para canais', () => {
+  const viewSource = readFileSync(new URL('../src/views/Automations.vue', import.meta.url), 'utf8')
+  const modalSource = readFileSync(
+    new URL('../src/features/automations/AutomationFormModal.vue', import.meta.url),
+    'utf8',
+  )
+
+  assert.doesNotMatch(`${viewSource}\n${modalSource}`, /axios\.create|baseURL/)
+  assert.match(viewSource, /whatsappChannelService/)
+})
+
+test('troca de canal preserva bloqueio de double-submit', async () => {
+  const existing = automation('REACTIVATION', {
+    isSystem: false,
+    messagingChannelId: 'channel-1',
+  })
+  let calls = 0
+  let resolveUpdate: ((value: Automation) => void) | undefined
+  const pending = new Promise<Automation>((resolve) => { resolveUpdate = resolve })
+  const state = emptyAutomationManagementState()
+  state.automations = [existing]
+  const controller = createAutomationManagementController(repository({
+    async updateAutomation() {
+      calls += 1
+      return pending
+    },
+  }), state)
+  const form = {
+    ...automationFormFromAutomation(existing),
+    messagingChannelId: 'channel-2',
+  }
+
+  const first = controller.updateAutomation(existing, form)
+  assert.equal(await controller.updateAutomation(existing, form), false)
+  assert.equal(calls, 1)
+  assert.equal(state.automations[0]?.messagingChannelId, 'channel-1')
+  resolveUpdate?.(automation('REACTIVATION', {
+    isSystem: false,
+    messagingChannelId: 'channel-2',
+  }))
+  assert.equal(await first, true)
+  assert.equal(state.automations[0]?.messagingChannelId, 'channel-2')
+})
+
+test('automações system editáveis aceitam canal sem liberar campos proibidos', () => {
+  const birthday = automation('BIRTHDAY', {
+    systemKey: 'BIRTHDAY_DEFAULT',
+    messagingChannelId: 'channel-1',
+  })
+  const reactivation = automation('REACTIVATION', {
+    systemKey: 'REACTIVATION_30_DAYS',
+    messagingChannelId: 'channel-1',
+  })
+
+  assert.deepEqual(buildUpdateAutomationPayload(birthday, {
+    ...automationFormFromAutomation(birthday),
+    messagingChannelId: 'channel-2',
+  }), {
+    message: birthday.message,
+    messagingChannelId: 'channel-2',
+  })
+  assert.deepEqual(buildUpdateAutomationPayload(reactivation, {
+    ...automationFormFromAutomation(reactivation),
+    messagingChannelId: 'channel-2',
+  }), {
+    message: reactivation.message,
+    daysAfter: reactivation.daysAfter,
+    messagingChannelId: 'channel-2',
+  })
+})
+
+test('CAMPAIGN permanece fora da gestão recorrente com messagingChannelId', () => {
+  const campaign = automation('CAMPAIGN', { messagingChannelId: 'channel-1' })
+
+  assert.deepEqual(filterManagedAutomations([campaign]), [])
+})
+
+test('erro ao carregar canais não apaga automações nem expõe detalhe técnico', () => {
+  const viewSource = readFileSync(new URL('../src/views/Automations.vue', import.meta.url), 'utf8')
+  const catchBlock = viewSource.match(/async function loadWhatsappChannels[\s\S]*?catch \{([\s\S]*?)\n  \} finally/)?.[1] ?? ''
+
+  assert.match(catchBlock, /channelsLoadError\.value = true/)
+  assert.doesNotMatch(catchBlock, /state\.automations|error\.message|response\.data/)
+  assert.match(viewSource, /Canal configurado — dados indisponíveis/)
+  assert.match(
+    readFileSync(new URL('../src/features/automations/AutomationFormModal.vue', import.meta.url), 'utf8'),
+    /Não foi possível carregar os canais WhatsApp\. Tente novamente\./,
+  )
+  assert.match(viewSource, /@retry-channels="loadWhatsappChannels"/)
+})
+
+test('configuração de canais em automações não cria polling permanente', () => {
+  const sources = [
+    readFileSync(new URL('../src/views/Automations.vue', import.meta.url), 'utf8'),
+    readFileSync(
+      new URL('../src/features/automations/AutomationFormModal.vue', import.meta.url),
+      'utf8',
+    ),
+    readFileSync(
+      new URL('../src/features/automations/automation-management.logic.ts', import.meta.url),
+      'utf8',
+    ),
+  ].join('\n')
+
+  assert.doesNotMatch(sources, /setInterval|setTimeout/)
 })
 
 test('listagem usa GET /automation e ignora CAMPAIGN', async () => {
@@ -261,6 +627,7 @@ test('POST /automation usa payload real e nunca envia companyId', async () => {
     daysAfter: 30,
     message: 'Olá! Estamos com saudades.',
     cooldownHours: 24,
+    messagingChannelId: 'channel-1',
   })
   assert.equal('companyId' in payload, false)
 })
@@ -279,6 +646,7 @@ test('validação local cobre campos obrigatórios e inteiros positivos', () => 
     type: 'Selecione um tipo de automação válido.',
     daysAfter: 'Informe um número inteiro maior ou igual a 1.',
     message: 'Informe a mensagem da automação.',
+    messagingChannelId: 'Selecione um canal WhatsApp habilitado para envios.',
   })
   assert.equal(validateAutomationForm(validForm({ cooldownHours: '1.5' }), 'create').cooldownHours,
     'Informe um número inteiro maior ou igual a 1.')
@@ -314,6 +682,7 @@ test('submit aceita valores numéricos e mantém payload numérico', () => {
     daysAfter: 180,
     message: 'Olá! Estamos com saudades.',
     cooldownHours: 24,
+    messagingChannelId: 'channel-1',
   })
 })
 
@@ -324,6 +693,7 @@ test('automação customizada permite edição completa', () => {
     message: true,
     daysAfter: true,
     cooldownHours: true,
+    messagingChannelId: true,
   })
   assert.deepEqual(buildUpdateAutomationPayload(custom, validForm({ type: 'MAINTENANCE' })), {
     name: 'Retorno de clientes',
@@ -341,6 +711,7 @@ test('BIRTHDAY_DEFAULT system edita somente message', () => {
     message: true,
     daysAfter: false,
     cooldownHours: false,
+    messagingChannelId: true,
   })
   assert.deepEqual(buildUpdateAutomationPayload(birthday, form), {
     message: 'Olá! Estamos com saudades.',
@@ -363,6 +734,7 @@ test('BIRTHDAY system com outra systemKey não é editável', () => {
     message: false,
     daysAfter: false,
     cooldownHours: false,
+    messagingChannelId: false,
   })
   assert.equal(canEditAutomation(birthday), false)
 })
@@ -374,6 +746,7 @@ test('REACTIVATION system com outra systemKey não é editável', () => {
     message: false,
     daysAfter: false,
     cooldownHours: false,
+    messagingChannelId: false,
   })
   assert.equal(canEditAutomation(reactivation), false)
 })
@@ -385,6 +758,7 @@ test('MAINTENANCE system não oferece edição de configuração', () => {
     message: false,
     daysAfter: false,
     cooldownHours: false,
+    messagingChannelId: false,
   })
   assert.equal(canEditAutomation(maintenance), false)
   assert.equal(buildUpdateAutomationPayload(maintenance, validForm()), null)

@@ -48,6 +48,10 @@
           </div>
 
           <p class="campaign-message">{{ campaign.message || 'Conteúdo definido no envio' }}</p>
+          <p class="campaign-channel">
+            <span>Canal WhatsApp</span>
+            <strong>{{ configuredChannelLabel(campaign) }}</strong>
+          </p>
 
           <div class="campaign-card-footer">
             <time :datetime="campaign.createdAt">Criada em {{ formatDate(campaign.createdAt) }}</time>
@@ -129,6 +133,44 @@
           </span>
         </div>
 
+        <div class="form-field">
+          <label for="campaign-channel">Canal WhatsApp</label>
+          <select
+            id="campaign-channel"
+            v-model="campaignChannelId"
+            :disabled="campaignChannelSelectionDisabled"
+            :aria-invalid="campaignChannelTouched && Boolean(campaignChannelValidationError)"
+            aria-describedby="campaign-channel-help"
+            @blur="campaignChannelTouched = true"
+            @change="handleCreateChannelChange"
+          >
+            <option value="" disabled>Selecione um canal</option>
+            <option
+              v-for="option in createChannelOptions"
+              :key="option.id"
+              :value="option.id"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+          <span
+            id="campaign-channel-help"
+            :class="campaignChannelTouched && campaignChannelValidationError ? 'field-error' : 'field-hint'"
+            aria-live="polite"
+          >
+            {{ campaignChannelHelp }}
+          </span>
+          <button
+            v-if="channelsLoadError"
+            type="button"
+            class="retry-channels-button"
+            :disabled="creating || channelsLoading"
+            @click="loadWhatsappChannels"
+          >
+            Tentar carregar canais novamente
+          </button>
+        </div>
+
         <p v-if="createError" class="create-error" role="alert">{{ createError }}</p>
 
         <div class="modal-actions">
@@ -138,7 +180,7 @@
           <button
             type="submit"
             class="btn-primary"
-            :disabled="creating || Boolean(campaignNameValidationError)"
+            :disabled="creating || Boolean(campaignNameValidationError) || Boolean(campaignChannelValidationError)"
           >
             <span v-if="creating" class="button-spinner" aria-hidden="true" />
             {{ creating ? 'Criando...' : 'Criar campanha' }}
@@ -206,10 +248,20 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, toRef } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, toRef, watch } from 'vue'
 import { isAxiosError } from 'axios'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { automationService, type Automation } from '@/services/automation.service'
+import {
+  whatsappChannelService,
+  type WhatsappChannel,
+} from '@/services/whatsapp-channel.service'
+import {
+  configuredWhatsappChannelLabel,
+  eligibleWhatsappChannels,
+  initialWhatsappChannelIdForCreate,
+  whatsappChannelSelectionOptions,
+} from '@/features/whatsapp-channels/whatsapp-channel.logic'
 import {
   campaignLifecycleActionLabel,
   createCampaignLifecycleController,
@@ -233,10 +285,16 @@ const loadError = ref(false)
 const createModalOpen = ref(false)
 const campaignName = ref('')
 const campaignNameTouched = ref(false)
+const campaignChannelId = ref('')
+const campaignChannelTouched = ref(false)
 const campaignNameInput = ref<HTMLInputElement | null>(null)
 const creating = ref(false)
 const createError = ref('')
 const lifecycleCancelButton = ref<HTMLButtonElement | null>(null)
+const whatsappChannels = ref<WhatsappChannel[]>([])
+const channelsLoading = ref(false)
+const channelsLoadError = ref(false)
+let channelsLoadGeneration = 0
 
 const campaignNameValidationError = computed(() => {
   const name = campaignName.value.trim()
@@ -245,6 +303,38 @@ const campaignNameValidationError = computed(() => {
   if (name.length > 120) return 'O nome da campanha deve ter no máximo 120 caracteres.'
 
   return ''
+})
+
+const activeWhatsappChannels = computed(() => eligibleWhatsappChannels(whatsappChannels.value))
+const createChannelOptions = computed(() => whatsappChannelSelectionOptions(
+  whatsappChannels.value,
+  null,
+))
+const campaignChannelSelectionDisabled = computed(() => (
+  creating.value
+  || channelsLoading.value
+  || channelsLoadError.value
+  || activeWhatsappChannels.value.length === 0
+))
+const campaignChannelValidationError = computed(() => {
+  if (channelsLoadError.value) return 'Não foi possível carregar os canais WhatsApp.'
+  if (channelsLoading.value) return 'Aguarde o carregamento dos canais WhatsApp.'
+  if (activeWhatsappChannels.value.length === 0) {
+    return 'Não há canal WhatsApp habilitado para envios.'
+  }
+  if (!activeWhatsappChannels.value.some((channel) => channel.id === campaignChannelId.value)) {
+    return 'Selecione um canal WhatsApp habilitado para envios.'
+  }
+  return ''
+})
+const campaignChannelHelp = computed(() => {
+  if (campaignChannelTouched.value && campaignChannelValidationError.value) {
+    return campaignChannelValidationError.value
+  }
+  if (channelsLoading.value) return 'Carregando canais WhatsApp...'
+  if (channelsLoadError.value) return 'Os canais estão indisponíveis no momento.'
+  if (activeWhatsappChannels.value.length === 0) return 'Não há canal habilitado para envios.'
+  return 'Somente canais com routing ativo estão disponíveis.'
 })
 
 const lifecycleTitle = computed(() => {
@@ -270,6 +360,7 @@ const lifecycleConfirmLabel = computed(() => {
 })
 
 async function loadCampaigns() {
+  void loadWhatsappChannels()
   loading.value = true
   loadError.value = false
 
@@ -284,6 +375,24 @@ async function loadCampaigns() {
   }
 }
 
+async function loadWhatsappChannels() {
+  if (channelsLoading.value) return
+  channelsLoadGeneration += 1
+  const generation = channelsLoadGeneration
+  channelsLoading.value = true
+  channelsLoadError.value = false
+  try {
+    const response = await whatsappChannelService.listWhatsappChannels()
+    if (generation !== channelsLoadGeneration) return
+    whatsappChannels.value = response.channels
+  } catch {
+    if (generation !== channelsLoadGeneration) return
+    channelsLoadError.value = true
+  } finally {
+    if (generation === channelsLoadGeneration) channelsLoading.value = false
+  }
+}
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('pt-BR').format(new Date(value))
 }
@@ -291,7 +400,21 @@ function formatDate(value: string) {
 function resetCreateForm() {
   campaignName.value = ''
   campaignNameTouched.value = false
+  campaignChannelId.value = initialWhatsappChannelIdForCreate(whatsappChannels.value)
+  campaignChannelTouched.value = false
   createError.value = ''
+}
+
+function handleCreateChannelChange() {
+  campaignChannelTouched.value = true
+  createError.value = ''
+}
+
+function configuredChannelLabel(campaign: Automation): string {
+  if (channelsLoadError.value && campaign.messagingChannelId) {
+    return 'Canal configurado — dados indisponíveis'
+  }
+  return configuredWhatsappChannelLabel(campaign.messagingChannelId, whatsappChannels.value)
 }
 
 async function openCreateModal() {
@@ -313,7 +436,8 @@ async function createCampaign() {
   if (creating.value) return
 
   campaignNameTouched.value = true
-  if (campaignNameValidationError.value) return
+  campaignChannelTouched.value = true
+  if (campaignNameValidationError.value || campaignChannelValidationError.value) return
 
   creating.value = true
   createError.value = ''
@@ -321,6 +445,7 @@ async function createCampaign() {
   try {
     const campaign = await automationService.createCampaign({
       name: campaignName.value.trim(),
+      messagingChannelId: campaignChannelId.value,
     })
 
     campaigns.value = [campaign, ...campaigns.value]
@@ -349,6 +474,11 @@ function closeLifecycleAction() {
 async function confirmLifecycleAction() {
   await lifecycleController.confirmAction()
 }
+
+watch(whatsappChannels, (channels) => {
+  if (!createModalOpen.value || campaignChannelId.value) return
+  campaignChannelId.value = initialWhatsappChannelIdForCreate(channels)
+})
 
 onMounted(loadCampaigns)
 </script>
@@ -562,6 +692,23 @@ onMounted(loadCampaigns)
   -webkit-line-clamp: 2;
 }
 
+.campaign-channel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.campaign-channel span {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
+.campaign-channel strong {
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
 .campaign-card-footer {
   padding-top: 1rem;
   border-top: 1px solid var(--card-border);
@@ -677,6 +824,9 @@ onMounted(loadCampaigns)
 
 .modal-form {
   margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .lifecycle-modal .modal-actions {
@@ -710,7 +860,8 @@ onMounted(loadCampaigns)
   font-weight: 600;
 }
 
-.form-field input {
+.form-field input,
+.form-field select {
   width: 100%;
   padding: 0.75rem 0.875rem;
   border: 1.5px solid var(--input-border);
@@ -722,12 +873,14 @@ onMounted(loadCampaigns)
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.form-field input:focus {
+.form-field input:focus,
+.form-field select:focus {
   border-color: var(--brand);
   box-shadow: 0 0 0 3px var(--brand-glow);
 }
 
-.form-field input[aria-invalid='true'] {
+.form-field input[aria-invalid='true'],
+.form-field select[aria-invalid='true'] {
   border-color: var(--error);
 }
 
@@ -735,7 +888,8 @@ onMounted(loadCampaigns)
   color: var(--text-muted);
 }
 
-.form-field input:disabled {
+.form-field input:disabled,
+.form-field select:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
@@ -745,6 +899,25 @@ onMounted(loadCampaigns)
   margin-top: 0.35rem;
   color: var(--error);
   font-size: 0.78rem;
+}
+
+.field-hint {
+  min-height: 1.25rem;
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.retry-channels-button {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  color: var(--brand-light);
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .create-error {

@@ -1,4 +1,13 @@
 import type { Automation, AutomationType } from '@/services/automation.service'
+import type { WhatsappChannel } from '@/services/whatsapp-channel.service'
+import {
+  configuredWhatsappChannelLabel,
+  eligibleWhatsappChannels as sharedEligibleWhatsappChannels,
+  initialWhatsappChannelIdForCreate as sharedInitialWhatsappChannelIdForCreate,
+  whatsappChannelSelectionLabel,
+  whatsappChannelSelectionOptions,
+  type WhatsappChannelSelectionOption,
+} from '../whatsapp-channels/whatsapp-channel.logic.ts'
 import type {
   CreateRecurringAutomationPayload,
   RecurringAutomationType,
@@ -14,6 +23,7 @@ export interface AutomationFormValues {
   daysAfter: string | number
   message: string
   cooldownHours: string | number
+  messagingChannelId: string
 }
 
 export type AutomationFormErrors = Partial<Record<keyof AutomationFormValues, string>>
@@ -23,7 +33,10 @@ export interface AutomationEditCapabilities {
   message: boolean
   daysAfter: boolean
   cooldownHours: boolean
+  messagingChannelId: boolean
 }
+
+export type AutomationChannelOption = WhatsappChannelSelectionOption
 
 export interface AutomationManagementRepository {
   list(): Promise<Automation[]>
@@ -58,6 +71,7 @@ export const EMPTY_EDIT_CAPABILITIES: AutomationEditCapabilities = {
   message: false,
   daysAfter: false,
   cooldownHours: false,
+  messagingChannelId: false,
 }
 
 export function isManagedAutomation(
@@ -80,13 +94,24 @@ export function automationTypeLabel(automation: Automation): string {
 
 export function automationEditCapabilities(automation: Automation): AutomationEditCapabilities {
   if (!automation.isSystem) {
-    return { name: true, message: true, daysAfter: true, cooldownHours: true }
+    return {
+      name: true,
+      message: true,
+      daysAfter: true,
+      cooldownHours: true,
+      messagingChannelId: true,
+    }
   }
   if (automation.systemKey === 'BIRTHDAY_DEFAULT') {
-    return { ...EMPTY_EDIT_CAPABILITIES, message: true }
+    return { ...EMPTY_EDIT_CAPABILITIES, message: true, messagingChannelId: true }
   }
   if (automation.systemKey === 'REACTIVATION_30_DAYS') {
-    return { ...EMPTY_EDIT_CAPABILITIES, message: true, daysAfter: true }
+    return {
+      ...EMPTY_EDIT_CAPABILITIES,
+      message: true,
+      daysAfter: true,
+      messagingChannelId: true,
+    }
   }
   return { ...EMPTY_EDIT_CAPABILITIES }
 }
@@ -100,7 +125,14 @@ export function canDeleteAutomation(automation: Automation): boolean {
 }
 
 export function emptyAutomationForm(): AutomationFormValues {
-  return { name: '', type: '', daysAfter: '', message: '', cooldownHours: '24' }
+  return {
+    name: '',
+    type: '',
+    daysAfter: '',
+    message: '',
+    cooldownHours: '24',
+    messagingChannelId: '',
+  }
 }
 
 export function automationFormFromAutomation(automation: Automation): AutomationFormValues {
@@ -110,7 +142,37 @@ export function automationFormFromAutomation(automation: Automation): Automation
     daysAfter: automation.daysAfter?.toString() ?? '',
     message: automation.message ?? '',
     cooldownHours: automation.cooldownHours.toString(),
+    messagingChannelId: automation.messagingChannelId ?? '',
   }
+}
+
+export function eligibleWhatsappChannels(channels: WhatsappChannel[]): WhatsappChannel[] {
+  return sharedEligibleWhatsappChannels(channels)
+}
+
+export function initialWhatsappChannelIdForCreate(channels: WhatsappChannel[]): string {
+  return sharedInitialWhatsappChannelIdForCreate(channels)
+}
+
+export function automationWhatsappChannelLabel(
+  channel: WhatsappChannel,
+  channels: WhatsappChannel[],
+): string {
+  return whatsappChannelSelectionLabel(channel, channels)
+}
+
+export function automationChannelOptions(
+  channels: WhatsappChannel[],
+  currentChannelId: string | null,
+): AutomationChannelOption[] {
+  return whatsappChannelSelectionOptions(channels, currentChannelId)
+}
+
+export function automationConfiguredChannelLabel(
+  messagingChannelId: string | null,
+  channels: WhatsappChannel[],
+): string {
+  return configuredWhatsappChannelLabel(messagingChannelId, channels)
 }
 
 export function positiveInteger(value: unknown): number | null {
@@ -145,6 +207,9 @@ export function validateAutomationForm(
   if (capabilities.cooldownHours && positiveInteger(form.cooldownHours) === null) {
     errors.cooldownHours = 'Informe um número inteiro maior ou igual a 1.'
   }
+  if (mode === 'create' && !form.messagingChannelId) {
+    errors.messagingChannelId = 'Selecione um canal WhatsApp habilitado para envios.'
+  }
 
   return errors
 }
@@ -164,6 +229,7 @@ export function buildCreateAutomationPayload(
     daysAfter,
     message: form.message.trim(),
     cooldownHours,
+    messagingChannelId: form.messagingChannelId,
   }
 }
 
@@ -187,6 +253,12 @@ export function buildUpdateAutomationPayload(
     const cooldownHours = positiveInteger(form.cooldownHours)
     if (cooldownHours === null) return null
     payload.cooldownHours = cooldownHours
+  }
+  if (capabilities.messagingChannelId) {
+    const messagingChannelId = form.messagingChannelId || null
+    if (messagingChannelId !== automation.messagingChannelId) {
+      payload.messagingChannelId = messagingChannelId
+    }
   }
   return payload
 }

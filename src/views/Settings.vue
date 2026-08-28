@@ -73,6 +73,11 @@
         </p>
       </div>
     </section>
+
+    <WhatsappChannelsSettings
+      :role="currentRole"
+      :profile-loading="profileLoading"
+    />
   </AppLayout>
 
   <OptOutInstructionsConfirmModal
@@ -92,6 +97,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import OptOutInstructionsConfirmModal from '@/components/settings/OptOutInstructionsConfirmModal.vue'
+import WhatsappChannelsSettings from '@/components/settings/WhatsappChannelsSettings.vue'
 import { useAuthStore } from '@/store/auth.store'
 import { messagingPolicyService } from '@/services/messaging-policy.service'
 import {

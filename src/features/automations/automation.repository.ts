@@ -8,6 +8,7 @@ export interface CreateRecurringAutomationPayload {
   daysAfter: number
   message: string
   cooldownHours?: number
+  messagingChannelId: string
 }
 
 export interface UpdateRecurringAutomationPayload {
@@ -16,6 +17,7 @@ export interface UpdateRecurringAutomationPayload {
   cooldownHours?: number
   message?: string
   isActive?: boolean
+  messagingChannelId?: string | null
 }
 
 export interface AutomationHttpClient {
