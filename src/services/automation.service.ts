@@ -46,6 +46,7 @@ export interface Automation {
   isActive: boolean
   isSystem: boolean
   systemKey: string | null
+  messagingChannelId: string | null
   createdAt: string
   campaignAudienceType: CampaignAudienceType
   segmentGender: CampaignSegmentGender | null

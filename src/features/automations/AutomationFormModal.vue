@@ -50,6 +50,53 @@
           <span v-if="errors.type" id="automation-type-error" class="field-error">{{ errors.type }}</span>
         </div>
 
+        <div v-if="mode === 'create' || capabilities.messagingChannelId" class="form-group">
+          <label for="automation-whatsapp-channel">Canal WhatsApp</label>
+          <select
+            id="automation-whatsapp-channel"
+            v-model="form.messagingChannelId"
+            :disabled="channelSelectionDisabled"
+            :aria-invalid="Boolean(errors.messagingChannelId)"
+            :aria-describedby="errors.messagingChannelId
+              ? 'automation-whatsapp-channel-error'
+              : 'automation-whatsapp-channel-hint'"
+          >
+            <option value="" disabled>Selecione um canal</option>
+            <option
+              v-for="option in channelOptions"
+              :key="option.id"
+              :value="option.id"
+              :disabled="option.disabled"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+          <span
+            v-if="errors.messagingChannelId"
+            id="automation-whatsapp-channel-error"
+            class="field-error"
+          >
+            {{ errors.messagingChannelId }}
+          </span>
+          <span
+            v-else
+            id="automation-whatsapp-channel-hint"
+            class="field-hint"
+            :class="{ 'hint-error': channelsError }"
+          >
+            {{ channelHint }}
+          </span>
+          <button
+            v-if="channelsError"
+            type="button"
+            class="retry-channels-button"
+            :disabled="saving || channelsLoading"
+            @click="$emit('retry-channels')"
+          >
+            Tentar carregar canais novamente
+          </button>
+        </div>
+
         <div v-if="mode === 'create' || capabilities.daysAfter" class="form-group">
           <label for="automation-days">Dias após</label>
           <input
@@ -112,10 +159,14 @@
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
 import type { Automation } from '@/services/automation.service'
+import type { WhatsappChannel } from '@/services/whatsapp-channel.service'
 import {
+  automationChannelOptions,
   automationEditCapabilities,
   automationFormFromAutomation,
   emptyAutomationForm,
+  eligibleWhatsappChannels,
+  initialWhatsappChannelIdForCreate,
   validateAutomationForm,
   type AutomationFormErrors,
   type AutomationFormMode,
@@ -128,10 +179,14 @@ const props = defineProps<{
   automation: Automation | null
   saving: boolean
   serverError: string
+  channels: WhatsappChannel[]
+  channelsLoading: boolean
+  channelsError: boolean
 }>()
 
 const emit = defineEmits<{
   close: []
+  'retry-channels': []
   submit: [form: AutomationFormValues]
 }>()
 
@@ -140,8 +195,38 @@ const errors = reactive<AutomationFormErrors>({})
 const capabilities = computed(() => (
   props.automation
     ? automationEditCapabilities(props.automation)
-    : { name: true, message: true, daysAfter: true, cooldownHours: true }
+    : {
+        name: true,
+        message: true,
+        daysAfter: true,
+        cooldownHours: true,
+        messagingChannelId: true,
+      }
 ))
+const eligibleChannels = computed(() => eligibleWhatsappChannels(props.channels))
+const channelOptions = computed(() => automationChannelOptions(
+  props.channels,
+  props.mode === 'edit' ? form.messagingChannelId || null : null,
+))
+const channelSelectionDisabled = computed(() => (
+  props.saving
+  || props.channelsLoading
+  || props.channelsError
+  || eligibleChannels.value.length === 0
+))
+const channelHint = computed(() => {
+  if (props.channelsLoading) return 'Carregando canais WhatsApp...'
+  if (props.channelsError) return 'Não foi possível carregar os canais WhatsApp. Tente novamente.'
+  if (eligibleChannels.value.length === 0) return 'Não há canal habilitado para envios.'
+  if (
+    props.mode === 'edit'
+    && form.messagingChannelId
+    && !eligibleChannels.value.some((channel) => channel.id === form.messagingChannelId)
+  ) {
+    return 'O canal atual está indisponível para novos envios. Escolha outro canal habilitado.'
+  }
+  return 'Somente canais com routing ativo estão disponíveis para nova seleção.'
+})
 
 watch(
   () => [props.open, props.automation] as const,
@@ -151,6 +236,15 @@ watch(
       ? automationFormFromAutomation(props.automation)
       : emptyAutomationForm())
     clearErrors()
+  },
+  { immediate: true },
+)
+
+watch(
+  () => [props.open, props.mode, props.channels] as const,
+  ([open, mode]) => {
+    if (!open || mode !== 'create' || form.messagingChannelId) return
+    form.messagingChannelId = initialWhatsappChannelIdForCreate(props.channels)
   },
   { immediate: true },
 )
@@ -190,7 +284,10 @@ select option:disabled { color: #a49db8; background-color: #13131a; }
 textarea { resize: vertical; line-height: 1.5; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-subtle); }
 [aria-invalid="true"] { border-color: var(--error); }
-.field-error, .form-error { color: var(--error); font-size: .74rem; }
+.field-error, .field-hint, .form-error { font-size: .74rem; }
+.field-error, .hint-error, .form-error { color: var(--error); }
+.field-hint { color: var(--text-muted); line-height: 1.45; }
+.retry-channels-button { justify-self: start; padding: 0; color: var(--brand-light); background: transparent; border: 0; font: inherit; font-size: .74rem; font-weight: 600; cursor: pointer; }
 .form-error { padding: .75rem; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 9px; }
 .modal-actions { margin-top: .5rem; display: flex; justify-content: flex-end; gap: .75rem; }
 .btn-primary, .btn-secondary { padding: .65rem 1rem; border-radius: 10px; font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer; }

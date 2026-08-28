@@ -66,6 +66,10 @@
           <p class="automation-message">{{ automation.message || 'Mensagem não configurada.' }}</p>
 
           <dl class="automation-details">
+            <div>
+              <dt>Canal WhatsApp</dt>
+              <dd>{{ configuredChannelLabel(automation) }}</dd>
+            </div>
             <div v-if="automation.daysAfter !== null">
               <dt>Execução após</dt>
               <dd>{{ automation.daysAfter }} {{ automation.daysAfter === 1 ? 'dia' : 'dias' }}</dd>
@@ -120,7 +124,11 @@
     :automation="editingAutomation"
     :saving="state.formSaving"
     :server-error="state.formError"
+    :channels="whatsappChannels"
+    :channels-loading="channelsLoading"
+    :channels-error="channelsLoadError"
     @close="closeForm"
+    @retry-channels="loadWhatsappChannels"
     @submit="saveAutomation"
   />
 
@@ -163,6 +171,11 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import AutomationFormModal from '@/features/automations/AutomationFormModal.vue'
 import { automationService, type Automation } from '@/services/automation.service'
 import {
+  whatsappChannelService,
+  type WhatsappChannel,
+} from '@/services/whatsapp-channel.service'
+import {
+  automationConfiguredChannelLabel,
   automationTypeLabel,
   buildCreateAutomationPayload,
   canDeleteAutomation,
@@ -180,6 +193,10 @@ const deleteButton = ref<HTMLButtonElement | null>(null)
 const formOpen = ref(false)
 const formMode = ref<AutomationFormMode>('create')
 const editingAutomation = ref<Automation | null>(null)
+const whatsappChannels = ref<WhatsappChannel[]>([])
+const channelsLoading = ref(false)
+const channelsLoadError = ref(false)
+let channelsLoadGeneration = 0
 
 const automationCountLabel = computed(() => {
   const count = state.automations.length
@@ -200,6 +217,25 @@ const toggleLabel = computed(() => state.actionAutomation?.isActive ? 'Desativar
 
 function loadAutomations() {
   void controller.load()
+  void loadWhatsappChannels()
+}
+
+async function loadWhatsappChannels() {
+  if (channelsLoading.value) return
+  channelsLoadGeneration += 1
+  const generation = channelsLoadGeneration
+  channelsLoading.value = true
+  channelsLoadError.value = false
+  try {
+    const response = await whatsappChannelService.listWhatsappChannels()
+    if (generation !== channelsLoadGeneration) return
+    whatsappChannels.value = response.channels
+  } catch {
+    if (generation !== channelsLoadGeneration) return
+    channelsLoadError.value = true
+  } finally {
+    if (generation === channelsLoadGeneration) channelsLoading.value = false
+  }
 }
 
 function openCreateForm() {
@@ -251,6 +287,16 @@ async function openDeleteAction(automation: Automation) {
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat('pt-BR').format(new Date(value))
+}
+
+function configuredChannelLabel(automation: Automation): string {
+  if (channelsLoadError.value && automation.messagingChannelId) {
+    return 'Canal configurado — dados indisponíveis'
+  }
+  return automationConfiguredChannelLabel(
+    automation.messagingChannelId,
+    whatsappChannels.value,
+  )
 }
 
 onMounted(loadAutomations)
