@@ -175,6 +175,72 @@ export function formatConnectedPhoneForDisplay(connectedPhone: string | null): s
   return value
 }
 
+export interface WhatsappChannelSelectionOption {
+  id: string
+  label: string
+  disabled: boolean
+}
+
+export function eligibleWhatsappChannels(channels: WhatsappChannel[]): WhatsappChannel[] {
+  return channels.filter((channel) => channel.isActive)
+}
+
+export function initialWhatsappChannelIdForCreate(channels: WhatsappChannel[]): string {
+  const eligible = eligibleWhatsappChannels(channels)
+  return eligible.length === 1 ? eligible[0]!.id : ''
+}
+
+export function whatsappChannelSelectionLabel(
+  channel: WhatsappChannel,
+  channels: WhatsappChannel[],
+): string {
+  const index = channels.findIndex((item) => item.id === channel.id)
+  const baseLabel = `WhatsApp ${index >= 0 ? index + 1 : 1}`
+  if (!channel.connectedPhone?.trim()) return baseLabel
+  return `${baseLabel} — ${formatConnectedPhoneForDisplay(channel.connectedPhone)}`
+}
+
+export function whatsappChannelSelectionOptions(
+  channels: WhatsappChannel[],
+  currentChannelId: string | null,
+): WhatsappChannelSelectionOption[] {
+  const eligible = eligibleWhatsappChannels(channels)
+  const current = currentChannelId
+    ? channels.find((channel) => channel.id === currentChannelId)
+    : undefined
+  const optionChannels = current && !current.isActive
+    ? [...eligible, current]
+    : eligible
+
+  const options = optionChannels.map((channel) => ({
+    id: channel.id,
+    label: channel.isActive
+      ? whatsappChannelSelectionLabel(channel, channels)
+      : `${whatsappChannelSelectionLabel(channel, channels)} — inativo para novos envios`,
+    disabled: !channel.isActive,
+  }))
+
+  if (currentChannelId && !current) {
+    options.push({
+      id: currentChannelId,
+      label: 'Canal indisponível',
+      disabled: true,
+    })
+  }
+  return options
+}
+
+export function configuredWhatsappChannelLabel(
+  messagingChannelId: string | null,
+  channels: WhatsappChannel[],
+): string {
+  if (!messagingChannelId) return 'Canal não definido'
+  const channel = channels.find((item) => item.id === messagingChannelId)
+  return channel
+    ? whatsappChannelSelectionLabel(channel, channels)
+    : 'Canal indisponível'
+}
+
 export function whatsappRoutingLabel(isActive: boolean): string {
   return isActive ? 'Routing ativo' : 'Routing inativo'
 }

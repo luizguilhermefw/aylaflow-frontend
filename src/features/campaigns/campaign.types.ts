@@ -72,6 +72,15 @@ export interface CampaignAudiencePreviewState {
   response: CampaignAudiencePreviewResponse
 }
 
+export interface CreateCampaignPayload {
+  name: string
+  messagingChannelId: string
+}
+
+export interface CampaignChannelUpdatePayload {
+  messagingChannelId: string | null
+}
+
 export interface AutomationLifecycleUpdatePayload {
   isActive: boolean
 }

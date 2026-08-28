@@ -75,6 +75,45 @@
           </div>
         </div>
 
+        <div class="channel-field form-field">
+          <label for="campaign-whatsapp-channel">Canal WhatsApp</label>
+          <select
+            id="campaign-whatsapp-channel"
+            v-model="selectedMessagingChannelId"
+            :disabled="channelSelectionDisabled"
+            :aria-invalid="channelTouched && Boolean(channelConfigurationError)"
+            aria-describedby="campaign-whatsapp-channel-help"
+            @blur="channelTouched = true"
+            @change="handleChannelChange"
+          >
+            <option value="" disabled>Selecione um canal</option>
+            <option
+              v-for="option in channelOptions"
+              :key="option.id"
+              :value="option.id"
+              :disabled="option.disabled"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+          <span
+            id="campaign-whatsapp-channel-help"
+            :class="displayedChannelError ? 'field-error channel-help' : 'channel-help'"
+            aria-live="polite"
+          >
+            {{ displayedChannelError || channelHint }}
+          </span>
+          <button
+            v-if="channelsLoadError"
+            type="button"
+            class="retry-channels-button"
+            :disabled="sending || previewingAudience || channelsLoading || Boolean(dispatchResult)"
+            @click="loadWhatsappChannels"
+          >
+            Tentar carregar canais novamente
+          </button>
+        </div>
+
         <div class="message-type-selector" role="radiogroup" aria-label="Tipo de mensagem">
           <button
             type="button"
@@ -178,7 +217,7 @@
           :preview="audiencePreview"
           :previewing="previewingAudience"
           :preview-error="previewError"
-          :preview-disabled="!campaign.isActive"
+          :preview-disabled="!campaign.isActive || Boolean(channelSendEligibilityError)"
           :loading="customersLoading"
           :error="customersError"
           :validation-error="displayedAudienceError"
@@ -208,6 +247,10 @@
           <div>
             <dt>Tipo</dt>
             <dd>{{ messageType === 'TEXT' ? 'Texto' : 'Imagem' }}</dd>
+          </div>
+          <div>
+            <dt>Canal WhatsApp</dt>
+            <dd>{{ selectedChannelLabel }}</dd>
           </div>
           <div>
             <dt>Público</dt>
@@ -249,7 +292,7 @@
         <button
           type="button"
           class="btn-primary send-button"
-          :disabled="sending || !campaign.isActive || Boolean(dispatchResult)"
+          :disabled="sending || !campaign.isActive || Boolean(channelSendEligibilityError) || Boolean(dispatchResult)"
           @click="openConfirmModal"
         >
           {{ dispatchResult ? 'Campanha preparada' : campaign.isActive ? 'Enviar campanha' : 'Campanha inativa' }}
@@ -287,6 +330,10 @@
         <div>
           <dt>Tipo</dt>
           <dd>{{ messageType === 'TEXT' ? 'Texto' : 'Imagem' }}</dd>
+        </div>
+        <div>
+          <dt>Canal WhatsApp</dt>
+          <dd>{{ selectedChannelLabel }}</dd>
         </div>
         <div v-if="audiencePreview">
           <dt>Prévia do público</dt>
@@ -335,8 +382,11 @@ import {
   buildCampaignAudience,
   buildCampaignAudiencePreview,
   buildCampaignAudienceUpdate,
+  persistCampaignChannel,
   campaignAudienceFingerprint,
   campaignAudienceSummary,
+  campaignChannelConfigurationError,
+  campaignChannelSendEligibilityError,
   campaignPreviewError,
   emptyCampaignSegmentForm,
   hydrateCampaignAudience,
@@ -352,6 +402,15 @@ import type {
 } from '@/features/campaigns/campaign.types'
 import { customerService, type Customer } from '@/services/customer.service'
 import { mediaAssetService } from '@/services/media-asset.service'
+import {
+  whatsappChannelService,
+  type WhatsappChannel,
+} from '@/services/whatsapp-channel.service'
+import {
+  configuredWhatsappChannelLabel,
+  eligibleWhatsappChannels,
+  whatsappChannelSelectionOptions,
+} from '@/features/whatsapp-channels/whatsapp-channel.logic'
 
 type CampaignMessageType = 'TEXT' | 'IMAGE'
 
@@ -389,6 +448,13 @@ const sending = ref(false)
 const uploading = ref(false)
 const dispatchError = ref('')
 const dispatchResult = ref<CampaignDispatchResponse | null>(null)
+const whatsappChannels = ref<WhatsappChannel[]>([])
+const channelsLoading = ref(false)
+const channelsLoadError = ref(false)
+const selectedMessagingChannelId = ref('')
+const channelTouched = ref(false)
+const channelError = ref('')
+let channelsLoadGeneration = 0
 
 const messageValidationError = computed(() => {
   const content = message.value.trim()
@@ -434,10 +500,62 @@ const displayedAudienceError = computed(() => (
   audienceTouched.value ? audienceValidationError.value : ''
 ))
 
+const activeWhatsappChannels = computed(() => eligibleWhatsappChannels(whatsappChannels.value))
+const channelOptions = computed(() => whatsappChannelSelectionOptions(
+  whatsappChannels.value,
+  campaign.value?.messagingChannelId ?? null,
+))
+const channelSelectionDisabled = computed(() => (
+  sending.value
+  || previewingAudience.value
+  || Boolean(dispatchResult.value)
+  || channelsLoading.value
+  || channelsLoadError.value
+  || activeWhatsappChannels.value.length === 0
+))
+const channelConfigurationError = computed(() => {
+  if (channelsLoadError.value) return 'Não foi possível carregar os canais WhatsApp.'
+  if (channelsLoading.value) return 'Aguarde o carregamento dos canais WhatsApp.'
+  return campaignChannelConfigurationError(
+    selectedMessagingChannelId.value,
+    campaign.value?.messagingChannelId ?? null,
+    whatsappChannels.value,
+  )
+})
+const channelSendEligibilityError = computed(() => {
+  if (channelsLoadError.value) return 'Não foi possível carregar os canais WhatsApp.'
+  if (channelsLoading.value) return 'Aguarde o carregamento dos canais WhatsApp.'
+  return campaignChannelSendEligibilityError(
+    selectedMessagingChannelId.value,
+    campaign.value?.messagingChannelId ?? null,
+    whatsappChannels.value,
+  )
+})
+const displayedChannelError = computed(() => (
+  channelError.value || (channelTouched.value ? channelConfigurationError.value : '')
+))
+const channelHint = computed(() => {
+  if (channelsLoading.value) return 'Carregando canais WhatsApp...'
+  if (channelsLoadError.value) return 'Os canais estão indisponíveis no momento.'
+  if (channelSendEligibilityError.value) return channelSendEligibilityError.value
+  if (activeWhatsappChannels.value.length === 0) return 'Não há canal habilitado para envios.'
+  return 'Somente canais com routing ativo estão disponíveis para nova seleção.'
+})
+const selectedChannelLabel = computed(() => {
+  if (channelsLoadError.value && selectedMessagingChannelId.value) {
+    return 'Canal configurado — dados indisponíveis'
+  }
+  return configuredWhatsappChannelLabel(
+    selectedMessagingChannelId.value || null,
+    whatsappChannels.value,
+  )
+})
+
 const currentAudienceFingerprint = computed(() => campaignAudienceFingerprint(
   audienceType.value,
   selectedCustomerIds.value,
   segmentFilters.value,
+  selectedMessagingChannelId.value || null,
 ))
 
 const audiencePreviewIsCurrent = computed(() => isCampaignPreviewCurrent(
@@ -468,7 +586,9 @@ const confirmationDescription = computed(() => {
 })
 
 const currentFormInvalid = computed(() => (
-  currentContentInvalid.value || Boolean(audienceValidationError.value)
+  currentContentInvalid.value
+  || Boolean(audienceValidationError.value)
+  || Boolean(channelSendEligibilityError.value)
 ))
 
 function getCampaignId() {
@@ -477,6 +597,7 @@ function getCampaignId() {
 }
 
 async function loadCampaign() {
+  void loadWhatsappChannels()
   loading.value = true
   loadError.value = false
   campaign.value = null
@@ -502,6 +623,9 @@ async function loadCampaign() {
   imagePreviewUrl.value = ''
   uploadedMediaAssetId.value = null
   dispatchError.value = ''
+  selectedMessagingChannelId.value = ''
+  channelTouched.value = false
+  channelError.value = ''
 
   try {
     const automations = await automationService.list()
@@ -511,6 +635,7 @@ async function loadCampaign() {
 
     campaign.value = currentCampaign ?? null
     message.value = currentCampaign?.message ?? ''
+    selectedMessagingChannelId.value = currentCampaign?.messagingChannelId ?? ''
 
     if (currentCampaign) {
       const hydratedAudience = hydrateCampaignAudience(currentCampaign)
@@ -524,7 +649,33 @@ async function loadCampaign() {
   }
 }
 
+async function loadWhatsappChannels() {
+  if (channelsLoading.value) return
+  channelsLoadGeneration += 1
+  const generation = channelsLoadGeneration
+  channelsLoading.value = true
+  channelsLoadError.value = false
+  try {
+    const response = await whatsappChannelService.listWhatsappChannels()
+    if (generation !== channelsLoadGeneration) return
+    whatsappChannels.value = response.channels
+  } catch {
+    if (generation !== channelsLoadGeneration) return
+    channelsLoadError.value = true
+  } finally {
+    if (generation === channelsLoadGeneration) channelsLoading.value = false
+  }
+}
+
 function handleComposerInput() {
+  dispatchError.value = ''
+}
+
+function handleChannelChange() {
+  if (sending.value || previewingAudience.value || dispatchResult.value) return
+  channelTouched.value = true
+  channelError.value = ''
+  previewError.value = ''
   dispatchError.value = ''
 }
 
@@ -591,16 +742,33 @@ async function previewAudience() {
   }
 
   audienceTouched.value = true
+  channelTouched.value = true
   previewError.value = ''
+  channelError.value = ''
   dispatchError.value = ''
 
-  if (audienceValidationError.value) return
+  if (audienceValidationError.value || channelSendEligibilityError.value) return
 
   const fingerprint = currentAudienceFingerprint.value
   const campaignId = campaign.value.id
   previewingAudience.value = true
 
   try {
+    if (campaign.value.messagingChannelId !== selectedMessagingChannelId.value) {
+      try {
+        campaign.value = await persistCampaignChannel(
+          automationService,
+          campaign.value,
+          selectedMessagingChannelId.value,
+        )
+      } catch {
+        channelError.value = 'Não foi possível salvar o canal WhatsApp. Tente novamente.'
+        return
+      }
+    }
+
+    if (fingerprint !== currentAudienceFingerprint.value) return
+
     if (audienceType.value === 'SEGMENTED') {
       campaign.value = await automationService.updateCampaignAudience(
         campaignId,
@@ -667,6 +835,7 @@ async function openConfirmModal() {
     imageTouched.value = true
   }
   audienceTouched.value = true
+  channelTouched.value = true
   dispatchError.value = ''
 
   if (currentFormInvalid.value) return
@@ -1054,6 +1223,55 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
   font-weight: 400;
 }
 
+.channel-field {
+  margin-bottom: 1.5rem;
+}
+
+.form-field select {
+  width: 100%;
+  padding: 0.75rem 0.875rem;
+  border: 1.5px solid var(--input-border);
+  border-radius: 10px;
+  outline: none;
+  color: var(--text-primary);
+  background: var(--input-bg);
+  font: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-field select:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px var(--brand-glow);
+}
+
+.form-field select[aria-invalid='true'] {
+  border-color: var(--error);
+}
+
+.form-field select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.channel-help {
+  min-height: 1.25rem;
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.retry-channels-button {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  color: var(--brand-light);
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .form-field textarea {
   width: 100%;
   resize: vertical;
@@ -1144,7 +1362,7 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
 }
 
 .review-list {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .review-list > div,

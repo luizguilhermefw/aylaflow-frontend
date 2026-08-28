@@ -5,6 +5,8 @@ import type {
   CampaignAudiencePreviewState,
   CampaignAudienceType,
   CampaignAudienceUpdatePayload,
+  CampaignChannelUpdatePayload,
+  CreateCampaignPayload,
   CampaignSegmentForm,
   CampaignSegmentationFields,
   AutomationLifecycleUpdatePayload,
@@ -24,6 +26,75 @@ export function campaignDispatchEndpoint(automationId: string): string {
 
 export function campaignUpdateEndpoint(automationId: string): string {
   return `${AUTOMATION_ENDPOINT}/${automationId}`
+}
+
+export interface CampaignChannelConfig {
+  id: string
+  messagingChannelId: string | null
+}
+
+export interface CampaignChannelAvailability {
+  id: string
+  isActive: boolean
+}
+
+export interface CampaignChannelUpdateRepository<TCampaign extends CampaignChannelConfig> {
+  updateCampaignChannel(
+    id: string,
+    payload: CampaignChannelUpdatePayload,
+  ): Promise<TCampaign>
+}
+
+export function buildCampaignChannelUpdate(
+  messagingChannelId: string | null,
+): CampaignChannelUpdatePayload {
+  return { messagingChannelId }
+}
+
+export function campaignChannelConfigurationError(
+  selectedMessagingChannelId: string,
+  persistedMessagingChannelId: string | null,
+  channels: CampaignChannelAvailability[],
+): string {
+  if (!selectedMessagingChannelId) {
+    return 'Selecione um canal WhatsApp habilitado para envios.'
+  }
+  if (selectedMessagingChannelId === persistedMessagingChannelId) return ''
+  if (channels.some((channel) => (
+    channel.id === selectedMessagingChannelId && channel.isActive
+  ))) return ''
+  return 'Selecione um canal WhatsApp habilitado para envios.'
+}
+
+export function campaignChannelSendEligibilityError(
+  selectedMessagingChannelId: string,
+  persistedMessagingChannelId: string | null,
+  channels: CampaignChannelAvailability[],
+): string {
+  if (!selectedMessagingChannelId) {
+    return 'Selecione um canal WhatsApp habilitado para envios.'
+  }
+
+  const selectedChannel = channels.find((channel) => channel.id === selectedMessagingChannelId)
+  if (selectedChannel?.isActive) return ''
+  if (selectedMessagingChannelId === persistedMessagingChannelId) {
+    return selectedChannel
+      ? 'O canal atual está inativo para novos envios. Escolha outro canal habilitado.'
+      : 'O canal atual está indisponível. Escolha outro canal habilitado.'
+  }
+  return 'Selecione um canal WhatsApp habilitado para envios.'
+}
+
+export async function persistCampaignChannel<TCampaign extends CampaignChannelConfig>(
+  repository: CampaignChannelUpdateRepository<TCampaign>,
+  campaign: TCampaign,
+  messagingChannelId: string,
+): Promise<TCampaign> {
+  if (campaign.messagingChannelId === messagingChannelId) return campaign
+  return repository.updateCampaignChannel(
+    campaign.id,
+    buildCampaignChannelUpdate(messagingChannelId),
+  )
 }
 
 export function emptyCampaignSegmentForm(): CampaignSegmentForm {
@@ -174,11 +245,13 @@ export function campaignAudienceFingerprint(
   audienceType: CampaignAudienceType,
   selectedCustomerIds: string[],
   filters: CampaignSegmentForm,
+  messagingChannelId: string | null = null,
 ): string {
   return JSON.stringify({
     audienceType,
     customerIds: audienceType === 'CUSTOMER_IDS' ? [...selectedCustomerIds].sort() : [],
     segmentFilters: audienceType === 'SEGMENTED' ? normalizeCampaignSegmentation(filters) : null,
+    messagingChannelId,
   })
 }
 
@@ -253,7 +326,8 @@ export interface CampaignHttpClient {
 
 export interface CampaignRepository<TAutomation, TDispatchPayload, TDispatchResponse> {
   list(): Promise<TAutomation[]>
-  createCampaign(payload: { name: string }): Promise<TAutomation>
+  createCampaign(payload: CreateCampaignPayload): Promise<TAutomation>
+  updateCampaignChannel(id: string, payload: CampaignChannelUpdatePayload): Promise<TAutomation>
   updateCampaignAudience(id: string, payload: CampaignAudienceUpdatePayload): Promise<TAutomation>
   updateAutomation(id: string, payload: AutomationLifecycleUpdatePayload): Promise<TAutomation>
   deleteAutomation(id: string): Promise<DeleteAutomationResponse<TAutomation>>
@@ -274,6 +348,10 @@ export function createCampaignRepository<TAutomation, TDispatchPayload, TDispatc
     },
     async createCampaign(payload) {
       const { data } = await http.post<TAutomation>(`${AUTOMATION_ENDPOINT}/campaign`, payload)
+      return data
+    },
+    async updateCampaignChannel(id, payload) {
+      const { data } = await http.patch<TAutomation>(campaignUpdateEndpoint(id), payload)
       return data
     },
     async updateCampaignAudience(id, payload) {

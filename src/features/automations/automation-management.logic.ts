@@ -1,6 +1,13 @@
 import type { Automation, AutomationType } from '@/services/automation.service'
 import type { WhatsappChannel } from '@/services/whatsapp-channel.service'
-import { formatConnectedPhoneForDisplay } from '../whatsapp-channels/whatsapp-channel.logic.ts'
+import {
+  configuredWhatsappChannelLabel,
+  eligibleWhatsappChannels as sharedEligibleWhatsappChannels,
+  initialWhatsappChannelIdForCreate as sharedInitialWhatsappChannelIdForCreate,
+  whatsappChannelSelectionLabel,
+  whatsappChannelSelectionOptions,
+  type WhatsappChannelSelectionOption,
+} from '../whatsapp-channels/whatsapp-channel.logic.ts'
 import type {
   CreateRecurringAutomationPayload,
   RecurringAutomationType,
@@ -29,11 +36,7 @@ export interface AutomationEditCapabilities {
   messagingChannelId: boolean
 }
 
-export interface AutomationChannelOption {
-  id: string
-  label: string
-  disabled: boolean
-}
+export type AutomationChannelOption = WhatsappChannelSelectionOption
 
 export interface AutomationManagementRepository {
   list(): Promise<Automation[]>
@@ -144,63 +147,32 @@ export function automationFormFromAutomation(automation: Automation): Automation
 }
 
 export function eligibleWhatsappChannels(channels: WhatsappChannel[]): WhatsappChannel[] {
-  return channels.filter((channel) => channel.isActive)
+  return sharedEligibleWhatsappChannels(channels)
 }
 
 export function initialWhatsappChannelIdForCreate(channels: WhatsappChannel[]): string {
-  const eligible = eligibleWhatsappChannels(channels)
-  return eligible.length === 1 ? eligible[0]!.id : ''
+  return sharedInitialWhatsappChannelIdForCreate(channels)
 }
 
 export function automationWhatsappChannelLabel(
   channel: WhatsappChannel,
   channels: WhatsappChannel[],
 ): string {
-  const index = channels.findIndex((item) => item.id === channel.id)
-  const baseLabel = `WhatsApp ${index >= 0 ? index + 1 : 1}`
-  if (!channel.connectedPhone?.trim()) return baseLabel
-  return `${baseLabel} — ${formatConnectedPhoneForDisplay(channel.connectedPhone)}`
+  return whatsappChannelSelectionLabel(channel, channels)
 }
 
 export function automationChannelOptions(
   channels: WhatsappChannel[],
   currentChannelId: string | null,
 ): AutomationChannelOption[] {
-  const eligible = eligibleWhatsappChannels(channels)
-  const current = currentChannelId
-    ? channels.find((channel) => channel.id === currentChannelId)
-    : undefined
-  const optionChannels = current && !current.isActive
-    ? [...eligible, current]
-    : eligible
-
-  const options = optionChannels.map((channel) => ({
-    id: channel.id,
-    label: channel.isActive
-      ? automationWhatsappChannelLabel(channel, channels)
-      : `${automationWhatsappChannelLabel(channel, channels)} — inativo para novos envios`,
-    disabled: !channel.isActive,
-  }))
-
-  if (currentChannelId && !current) {
-    options.push({
-      id: currentChannelId,
-      label: 'Canal indisponível',
-      disabled: true,
-    })
-  }
-  return options
+  return whatsappChannelSelectionOptions(channels, currentChannelId)
 }
 
 export function automationConfiguredChannelLabel(
   messagingChannelId: string | null,
   channels: WhatsappChannel[],
 ): string {
-  if (!messagingChannelId) return 'Canal não definido'
-  const channel = channels.find((item) => item.id === messagingChannelId)
-  return channel
-    ? automationWhatsappChannelLabel(channel, channels)
-    : 'Canal indisponível'
+  return configuredWhatsappChannelLabel(messagingChannelId, channels)
 }
 
 export function positiveInteger(value: unknown): number | null {
