@@ -3,8 +3,7 @@
     <div class="login-card register-card">
       <div class="login-header">
         <div class="logo">
-          <AppIcon class="logo-icon" name="brand" :size="24" />
-          <span class="logo-text">AylaFlow</span>
+          <AylaFlowLogo class="auth-brand-logo" />
         </div>
         <p class="subtitle">Crie sua conta para começar</p>
       </div>
@@ -162,7 +161,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
-import AppIcon from '@/components/ui/AppIcon.vue'
+import AylaFlowLogo from '@/components/ui/AylaFlowLogo.vue'
 import { useAuthStore } from '@/store/auth.store'
 import { AxiosError } from 'axios'
 import { RouterLink } from 'vue-router'
@@ -314,24 +313,14 @@ async function handleRegister() {
 }
 
 .logo {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
   margin-bottom: 0.75rem;
 }
 
-.logo-icon {
-  color: var(--brand-primary);
-  filter: drop-shadow(0 0 8px var(--brand-logo-shadow));
-}
-
-.logo-text {
-  font-size: 1.6rem;
-  font-weight: 800;
-  background: var(--gradient-text);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.auth-brand-logo {
+  --aylaflow-logo-width: 210px;
 }
 
 .subtitle {

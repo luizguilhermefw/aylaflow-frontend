@@ -2,8 +2,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <AppIcon class="logo-icon" name="brand" :size="24" />
-        <span class="logo-text">AylaFlow</span>
+        <AylaFlowLogo class="sidebar-brand-logo" />
       </div>
 
       <nav class="sidebar-nav" aria-label="Navegação principal">
@@ -103,6 +102,7 @@
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/components/ui/AppIcon.vue'
+import AylaFlowLogo from '@/components/ui/AylaFlowLogo.vue'
 import { useAuthStore } from '@/store/auth.store'
 import CompanyActivationGate from '@/components/company-access/CompanyActivationGate.vue'
 import { shouldShowCompanyActivationGate } from '@/features/company-access/company-access.logic'
@@ -156,23 +156,13 @@ onMounted(() => {
 .sidebar-logo {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
   padding: 0 1.25rem 1.75rem;
   border-bottom: 1px solid var(--sidebar-border);
 }
 
-.logo-icon {
-  color: var(--brand-primary);
-  filter: drop-shadow(0 0 6px var(--brand-logo-shadow));
-}
-
-.logo-text {
-  font-size: 1.2rem;
-  font-weight: 800;
-  background: var(--gradient-text);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.sidebar-brand-logo {
+  --aylaflow-logo-width: 154px;
 }
 
 .sidebar-nav {

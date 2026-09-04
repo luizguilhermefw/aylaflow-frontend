@@ -1,16 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-/* ── Design tokens: light is the default theme ── */
-:root,
-:root[data-theme='light'] {
-  color-scheme: light;
-
-  /* Official brand palette */
+/* ── Shared brand and icon tokens ── */
+:root {
   --brand-primary: #17bebb;
   --brand-highlight: #1ed4c7;
   --brand-dark: #0f2a2e;
   --neutral-dark: #0a0f14;
   --neutral-muted: #a0a7b5;
+  --brand: var(--brand-primary);
+  --gradient-brand: linear-gradient(135deg, #17bebb 0%, #1ed4c7 100%);
+  --text-on-brand: #0a0f14;
+  --icon-color: var(--text-muted);
+  --icon-hover: var(--brand-primary);
+  --icon-active: var(--brand-highlight);
+  --icon-disabled-opacity: 0.48;
+  --icon-size-small: 18px;
+  --icon-size-navigation: 20px;
+  --icon-size-feature: 24px;
+  --icon-stroke-width: 2;
+}
+
+/* ── Light is the default when no preference has been applied ── */
+:root:not([data-theme]),
+:root[data-theme='light'] {
+  color-scheme: light;
 
   /* Surfaces and typography */
   --bg-page: #f7fafa;
@@ -22,10 +35,8 @@
   --text-primary: #0a0f14;
   --text-secondary: #59646f;
   --text-muted: #68777d;
-  --text-on-brand: #0a0f14;
 
   /* Backwards-compatible aliases used by existing screens */
-  --brand: var(--brand-primary);
   --brand-light: #0d7f7d;
   --brand-subtle: rgba(23, 190, 187, 0.12);
   --brand-glow: rgba(30, 212, 199, 0.25);
@@ -33,7 +44,8 @@
   --brand-surface-strong: rgba(23, 190, 187, 0.18);
   --brand-spinner-track: rgba(23, 190, 187, 0.2);
   --brand-logo-shadow: rgba(23, 190, 187, 0.42);
-  --gradient-brand: linear-gradient(135deg, #17bebb 0%, #1ed4c7 100%);
+  --brand-logo-filter: none;
+  --brand-logo-blend-mode: multiply;
   --gradient-text: linear-gradient(135deg, #0f7776 0%, #17a9a6 100%);
 
   --bg-primary: var(--bg-page);
@@ -55,15 +67,6 @@
   --overlay-bg: rgba(10, 15, 20, 0.58);
   --scrollbar-thumb: rgba(15, 42, 46, 0.18);
   --scrollbar-thumb-hover: rgba(15, 42, 46, 0.3);
-  --icon-color: var(--text-muted);
-  --icon-hover: var(--brand-primary);
-  --icon-active: var(--brand-highlight);
-  --icon-disabled-opacity: 0.48;
-  --icon-size-small: 18px;
-  --icon-size-navigation: 20px;
-  --icon-size-feature: 24px;
-  --icon-stroke-width: 2;
-
   /* Semantic status colors remain independent from the brand */
   --error: #dc2626;
   --success: #168447;
@@ -82,9 +85,6 @@
   --text-primary: #f2f6f7;
   --text-secondary: #c5d0d3;
   --text-muted: #a0a7b5;
-  --text-on-brand: #0a0f14;
-
-  --brand: var(--brand-primary);
   --brand-light: var(--brand-highlight);
   --brand-subtle: rgba(30, 212, 199, 0.13);
   --brand-glow: rgba(30, 212, 199, 0.3);
@@ -92,25 +92,27 @@
   --brand-surface-strong: rgba(30, 212, 199, 0.2);
   --brand-spinner-track: rgba(30, 212, 199, 0.2);
   --brand-logo-shadow: rgba(30, 212, 199, 0.45);
+  --brand-logo-filter: invert(1) hue-rotate(180deg);
+  --brand-logo-blend-mode: screen;
   --gradient-text: linear-gradient(135deg, #1ed4c7 0%, #17bebb 100%);
 
-  --bg-primary: var(--bg-page);
-  --bg-gradient: radial-gradient(ellipse at top left, rgba(15, 42, 46, 0.72) 0%, #0a0f14 62%);
+  --bg-primary: #0a0f14;
+  --bg-gradient: #0a0f14;
   --sidebar-bg: #0f2a2e;
-  --sidebar-border: rgba(160, 167, 181, 0.18);
-  --card-bg: var(--bg-surface);
-  --card-border: var(--border-default);
+  --sidebar-border: #22383d;
+  --card-bg: #10171c;
+  --card-border: #223038;
   --card-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
-  --float-card-bg: rgba(15, 42, 46, 0.94);
+  --float-card-bg: #0f2a2e;
   --input-bg: #121c23;
   --input-border: #304149;
   --native-control-color-scheme: dark;
-  --nav-hover: rgba(255, 255, 255, 0.07);
+  --nav-hover: #17383c;
   --nav-active-text: var(--brand-highlight);
   --nav-active-icon: var(--brand-highlight);
-  --surface-hover: rgba(255, 255, 255, 0.055);
-  --surface-active: rgba(255, 255, 255, 0.09);
-  --overlay-bg: rgba(0, 0, 0, 0.72);
+  --surface-hover: #172127;
+  --surface-active: #1b282e;
+  --overlay-bg: rgba(0, 0, 0, 0.82);
   --scrollbar-thumb: rgba(160, 167, 181, 0.24);
   --scrollbar-thumb-hover: rgba(160, 167, 181, 0.38);
 
@@ -130,6 +132,7 @@
 
 html {
   font-size: 16px;
+  background-color: var(--bg-page);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
