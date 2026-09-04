@@ -1,43 +1,124 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-/* ── Design Tokens ── */
+/* ── Shared brand and icon tokens ── */
 :root {
-  /* Brand */
-  --brand: #7c3aed;
-  --brand-light: #a78bfa;
-  --brand-subtle: rgba(124, 58, 237, 0.12);
-  --brand-glow: rgba(124, 58, 237, 0.35);
-  --gradient-brand: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
-  --gradient-text: linear-gradient(135deg, #a78bfa 0%, #c084fc 100%);
+  --brand-primary: #17bebb;
+  --brand-highlight: #1ed4c7;
+  --brand-dark: #0f2a2e;
+  --neutral-dark: #0a0f14;
+  --neutral-muted: #a0a7b5;
+  --brand: var(--brand-primary);
+  --gradient-brand: linear-gradient(135deg, #17bebb 0%, #1ed4c7 100%);
+  --text-on-brand: #0a0f14;
+  --icon-color: var(--text-muted);
+  --icon-hover: var(--brand-primary);
+  --icon-active: var(--brand-highlight);
+  --icon-disabled-opacity: 0.48;
+  --icon-size-small: 18px;
+  --icon-size-navigation: 20px;
+  --icon-size-feature: 24px;
+  --icon-stroke-width: 2;
+}
 
-  /* Backgrounds */
-  --bg-primary: #0f0f13;
-  --bg-gradient: radial-gradient(ellipse at top left, #1a103a 0%, #0f0f13 60%);
-  --sidebar-bg: #13131a;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
+/* ── Light is the default when no preference has been applied ── */
+:root:not([data-theme]),
+:root[data-theme='light'] {
+  color-scheme: light;
 
-  /* Cards */
-  --card-bg: rgba(255, 255, 255, 0.04);
-  --card-border: rgba(255, 255, 255, 0.08);
-  --card-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
-  --float-card-bg: rgba(30, 20, 60, 0.85);
+  /* Surfaces and typography */
+  --bg-page: #f7fafa;
+  --bg-surface: #ffffff;
+  --bg-surface-secondary: #f0f5f5;
+  --bg-surface-subtle: var(--bg-surface-secondary);
+  --border-default: #dce5e7;
+  --border-strong: #c6d1d3;
+  --text-primary: #0a0f14;
+  --text-secondary: #59646f;
+  --text-muted: #68777d;
 
-  /* Inputs */
-  --input-bg: rgba(255, 255, 255, 0.05);
-  --input-border: rgba(255, 255, 255, 0.1);
+  /* Backwards-compatible aliases used by existing screens */
+  --brand-light: #0d7f7d;
+  --brand-subtle: rgba(23, 190, 187, 0.12);
+  --brand-glow: rgba(30, 212, 199, 0.25);
+  --brand-border: rgba(23, 190, 187, 0.28);
+  --brand-surface-strong: rgba(23, 190, 187, 0.18);
+  --brand-spinner-track: rgba(23, 190, 187, 0.2);
+  --brand-logo-shadow: rgba(23, 190, 187, 0.42);
+  --brand-logo-filter: none;
+  --brand-logo-blend-mode: multiply;
+  --gradient-text: linear-gradient(135deg, #0f7776 0%, #17a9a6 100%);
+
+  --bg-primary: var(--bg-page);
+  --bg-gradient: radial-gradient(ellipse at top left, rgba(30, 212, 199, 0.1) 0%, #f7fafa 58%);
+  --sidebar-bg: var(--bg-surface);
+  --sidebar-border: var(--border-default);
+  --card-bg: var(--bg-surface);
+  --card-border: var(--border-default);
+  --card-shadow: 0 16px 40px rgba(15, 42, 46, 0.08);
+  --float-card-bg: rgba(255, 255, 255, 0.94);
+  --input-bg: var(--bg-surface);
+  --input-border: #cbd7da;
+  --native-control-color-scheme: light;
+  --nav-hover: rgba(15, 42, 46, 0.06);
+  --nav-active-text: var(--brand-dark);
+  --nav-active-icon: var(--brand-primary);
+  --surface-hover: rgba(15, 42, 46, 0.05);
+  --surface-active: rgba(15, 42, 46, 0.08);
+  --overlay-bg: rgba(10, 15, 20, 0.58);
+  --scrollbar-thumb: rgba(15, 42, 46, 0.18);
+  --scrollbar-thumb-hover: rgba(15, 42, 46, 0.3);
+  /* Semantic status colors remain independent from the brand */
+  --error: #dc2626;
+  --success: #168447;
+  --warning: #b45309;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-page: #0a0f14;
+  --bg-surface: #10171c;
+  --bg-surface-secondary: #0f2a2e;
+  --bg-surface-subtle: var(--bg-surface-secondary);
+  --border-default: #223038;
+  --border-strong: #34464e;
+  --text-primary: #f2f6f7;
+  --text-secondary: #c5d0d3;
+  --text-muted: #a0a7b5;
+  --brand-light: var(--brand-highlight);
+  --brand-subtle: rgba(30, 212, 199, 0.13);
+  --brand-glow: rgba(30, 212, 199, 0.3);
+  --brand-border: rgba(30, 212, 199, 0.28);
+  --brand-surface-strong: rgba(30, 212, 199, 0.2);
+  --brand-spinner-track: rgba(30, 212, 199, 0.2);
+  --brand-logo-shadow: rgba(30, 212, 199, 0.45);
+  --brand-logo-filter: invert(1) hue-rotate(180deg);
+  --brand-logo-blend-mode: screen;
+  --gradient-text: linear-gradient(135deg, #1ed4c7 0%, #17bebb 100%);
+
+  --bg-primary: #0a0f14;
+  --bg-gradient: #0a0f14;
+  --sidebar-bg: #0f2a2e;
+  --sidebar-border: #22383d;
+  --card-bg: #10171c;
+  --card-border: #223038;
+  --card-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
+  --float-card-bg: #0f2a2e;
+  --input-bg: #121c23;
+  --input-border: #304149;
   --native-control-color-scheme: dark;
+  --nav-hover: #17383c;
+  --nav-active-text: var(--brand-highlight);
+  --nav-active-icon: var(--brand-highlight);
+  --surface-hover: #172127;
+  --surface-active: #1b282e;
+  --overlay-bg: rgba(0, 0, 0, 0.82);
+  --scrollbar-thumb: rgba(160, 167, 181, 0.24);
+  --scrollbar-thumb-hover: rgba(160, 167, 181, 0.38);
 
-  /* Navigation */
-  --nav-hover: rgba(255, 255, 255, 0.06);
-
-  /* Text */
-  --text-primary: #f1f0f5;
-  --text-secondary: #c4bfd8;
-  --text-muted: #7a7590;
-
-  /* Status */
   --error: #f87171;
   --success: #4ade80;
+  --warning: #fbbf24;
 }
 
 /* ── Reset & Base ── */
@@ -51,6 +132,7 @@
 
 html {
   font-size: 16px;
+  background-color: var(--bg-page);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
@@ -58,7 +140,7 @@ html {
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--bg-primary);
+  background: var(--bg-gradient);
   color: var(--text-primary);
   line-height: 1.5;
   min-height: 100vh;
@@ -80,6 +162,23 @@ a {
 
 button {
   font-family: inherit;
+}
+
+.icon-muted {
+  color: var(--icon-color);
+}
+
+.icon-interactive:hover {
+  color: var(--icon-hover);
+}
+
+.icon-active {
+  color: var(--icon-active);
+}
+
+button:disabled .app-icon,
+[aria-disabled='true'] .app-icon {
+  opacity: var(--icon-disabled-opacity);
 }
 
 /* Native select popups need explicit colors on Windows/Chrome/Firefox. */
@@ -110,11 +209,11 @@ select option:disabled {
 }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--scrollbar-thumb);
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* ── Focus ring ── */

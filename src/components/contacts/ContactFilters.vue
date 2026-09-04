@@ -122,16 +122,16 @@ function clearFilters() {
 .filters-form { margin-top: 1.25rem; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }
 .filter-field { min-width: 0; display: flex; flex-direction: column; gap: 0.4rem; }
 .filter-field label { color: var(--text-secondary); font-size: 0.78rem; font-weight: 600; }
-.filter-field input, .filter-field select { width: 100%; min-height: 42px; padding: 0.62rem 0.7rem; border: 1px solid var(--input-border); border-radius: 9px; outline: none; color: var(--text-primary); background: var(--input-bg); color-scheme: dark; font: inherit; font-size: 0.82rem; }
+.filter-field input, .filter-field select { width: 100%; min-height: 42px; padding: 0.62rem 0.7rem; border: 1px solid var(--input-border); border-radius: 9px; outline: none; color: var(--text-primary); background: var(--input-bg); color-scheme: var(--native-control-color-scheme); font: inherit; font-size: 0.82rem; }
 .filter-field input:focus, .filter-field select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-glow); }
-.filter-field select option { color: var(--text-primary); background: #1a1a23; }
-.filter-field select option:checked { color: #fff; background: #5b21b6; }
-.filter-field select option:hover { color: #fff; background: var(--brand); }
+.filter-field select option { color: var(--text-primary); background: var(--sidebar-bg); }
+.filter-field select option:checked { color: var(--text-on-brand); background: var(--brand); }
+.filter-field select option:hover { color: var(--text-on-brand); background: var(--brand); }
 .filter-field input[type='date']::-webkit-calendar-picker-indicator { cursor: pointer; filter: invert(78%) sepia(8%) saturate(691%) hue-rotate(211deg) brightness(90%); }
 .filter-error { grid-column: 1 / -1; color: var(--error); font-size: 0.8rem; }
 .filter-actions { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 0.75rem; }
 .btn-primary, .btn-secondary { padding: 0.62rem 0.9rem; border-radius: 9px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
-.btn-primary { border: none; color: #fff; background: var(--gradient-brand); }
+.btn-primary { border: none; color: var(--text-on-brand); background: var(--gradient-brand); }
 .btn-secondary { border: 1px solid var(--card-border); color: var(--text-secondary); background: transparent; }
 .btn-primary:disabled, .btn-secondary:disabled { cursor: not-allowed; opacity: 0.55; }
 

@@ -552,7 +552,7 @@ onMounted(loadCampaigns)
 .spinner {
   width: 30px;
   height: 30px;
-  border: 3px solid rgba(167, 139, 250, 0.2);
+  border: 3px solid var(--brand-spinner-track);
   border-top-color: var(--brand-light);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
@@ -573,7 +573,7 @@ onMounted(loadCampaigns)
 .btn-primary {
   padding: 0.7rem 1.25rem;
   border: none;
-  color: #fff;
+  color: var(--text-on-brand);
   background: var(--gradient-brand);
   box-shadow: 0 4px 16px var(--brand-glow);
 }
@@ -671,7 +671,7 @@ onMounted(loadCampaigns)
 
 .status.inactive {
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-active);
 }
 
 .status-dot {
@@ -769,7 +769,7 @@ onMounted(loadCampaigns)
   align-items: center;
   justify-content: center;
   overflow-y: auto;
-  background: rgba(0, 0, 0, 0.72);
+  background: var(--overlay-bg);
   backdrop-filter: blur(4px);
 }
 

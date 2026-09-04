@@ -267,7 +267,7 @@ function submit() {
 </script>
 
 <style scoped>
-.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 1.5rem; display: flex; align-items: center; justify-content: center; overflow-y: auto; background: rgba(0,0,0,.72); backdrop-filter: blur(4px); }
+.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 1.5rem; display: flex; align-items: center; justify-content: center; overflow-y: auto; background: var(--overlay-bg); backdrop-filter: blur(4px); }
 .form-modal { width: min(100%, 560px); max-height: calc(100vh - 3rem); padding: 1.5rem; overflow-y: auto; background: var(--sidebar-bg); border: 1px solid var(--card-border); border-radius: 18px; box-shadow: var(--card-shadow); }
 .modal-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .modal-heading h2 { color: var(--text-primary); font-size: 1.15rem; }
@@ -277,10 +277,10 @@ form { margin-top: 1.25rem; display: grid; gap: 1rem; }
 .form-group { display: grid; gap: .42rem; }
 label { color: var(--text-secondary); font-size: .78rem; font-weight: 600; }
 input, select, textarea { width: 100%; padding: .72rem .8rem; color: var(--text-primary); background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 10px; font: inherit; font-size: .84rem; }
-select { color-scheme: dark; }
-select option { color: #f1f0f5; background-color: #13131a; }
-select option:checked { color: #fff; background-color: #4c1d95; }
-select option:disabled { color: #a49db8; background-color: #13131a; }
+select { color-scheme: var(--native-control-color-scheme); }
+select option { color: var(--text-primary); background-color: var(--sidebar-bg); }
+select option:checked { color: var(--text-on-brand); background-color: var(--brand); }
+select option:disabled { color: var(--text-muted); background-color: var(--sidebar-bg); }
 textarea { resize: vertical; line-height: 1.5; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-subtle); }
 [aria-invalid="true"] { border-color: var(--error); }
@@ -291,7 +291,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--b
 .form-error { padding: .75rem; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 9px; }
 .modal-actions { margin-top: .5rem; display: flex; justify-content: flex-end; gap: .75rem; }
 .btn-primary, .btn-secondary { padding: .65rem 1rem; border-radius: 10px; font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer; }
-.btn-primary { display: inline-flex; align-items: center; justify-content: center; border: none; color: #fff; background: var(--gradient-brand); }
+.btn-primary { display: inline-flex; align-items: center; justify-content: center; border: none; color: var(--text-on-brand); background: var(--gradient-brand); }
 .btn-secondary { color: var(--text-secondary); background: transparent; border: 1px solid var(--card-border); }
 button:disabled, input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; opacity: .55; }
 button:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }

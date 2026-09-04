@@ -401,7 +401,7 @@ function clearSelection() {
 .audience-option.selected {
   color: var(--brand-light);
   background: var(--brand-subtle);
-  border-color: rgba(124, 58, 237, 0.45);
+  border-color: var(--brand-border);
 }
 
 .audience-option:disabled {
@@ -416,8 +416,8 @@ function clearSelection() {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-on-brand);
+  background: var(--surface-active);
   border: 1px solid var(--input-border);
   border-radius: 50%;
 }
@@ -446,7 +446,7 @@ function clearSelection() {
 
 .customer-selector {
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-hover);
   border: 1px solid var(--card-border);
   border-radius: 12px;
 }
@@ -558,7 +558,7 @@ function clearSelection() {
 .spinner {
   width: 24px;
   height: 24px;
-  border: 2.5px solid rgba(167, 139, 250, 0.2);
+  border: 2.5px solid var(--brand-spinner-track);
   border-top-color: var(--brand-light);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
@@ -633,7 +633,7 @@ function clearSelection() {
 
 .segmentation-panel {
   padding: 1rem;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--surface-hover);
   border: 1px solid var(--card-border);
   border-radius: 12px;
 }
@@ -665,7 +665,7 @@ function clearSelection() {
   outline: none;
   color: var(--text-primary);
   background: var(--input-bg);
-  color-scheme: dark;
+  color-scheme: var(--native-control-color-scheme);
   font: inherit;
   font-size: 0.82rem;
 }
@@ -700,7 +700,7 @@ function clearSelection() {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border: 1px solid rgba(124, 58, 237, 0.45);
+  border: 1px solid var(--brand-border);
   border-radius: 9px;
   color: var(--brand-light);
   background: var(--brand-subtle);
@@ -732,7 +732,7 @@ function clearSelection() {
 .preview-card {
   padding: 1rem;
   background: var(--brand-subtle);
-  border: 1px solid rgba(124, 58, 237, 0.3);
+  border: 1px solid var(--brand-border);
   border-radius: 12px;
 }
 

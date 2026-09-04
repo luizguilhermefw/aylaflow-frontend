@@ -23,8 +23,8 @@ import { COMPANY_PENDING_ONBOARDING_COPY } from '@/features/company-access/compa
   display: flex;
   align-items: flex-start;
   gap: 1rem;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.14), rgba(168, 85, 247, 0.06));
-  border: 1px solid rgba(167, 139, 250, 0.28);
+  background: linear-gradient(135deg, var(--brand-subtle), transparent);
+  border: 1px solid var(--brand-border);
   border-radius: 16px;
 }
 

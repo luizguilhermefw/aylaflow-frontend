@@ -3,8 +3,7 @@
     <div class="login-card register-card">
       <div class="login-header">
         <div class="logo">
-          <span class="logo-icon">⚡</span>
-          <span class="logo-text">AylaFlow</span>
+          <AylaFlowLogo class="auth-brand-logo" />
         </div>
         <p class="subtitle">Crie sua conta para começar</p>
       </div>
@@ -162,6 +161,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
+import AylaFlowLogo from '@/components/ui/AylaFlowLogo.vue'
 import { useAuthStore } from '@/store/auth.store'
 import { AxiosError } from 'axios'
 import { RouterLink } from 'vue-router'
@@ -313,24 +313,14 @@ async function handleRegister() {
 }
 
 .logo {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
   margin-bottom: 0.75rem;
 }
 
-.logo-icon {
-  font-size: 1.8rem;
-  filter: drop-shadow(0 0 8px #7c3aed88);
-}
-
-.logo-text {
-  font-size: 1.6rem;
-  font-weight: 800;
-  background: var(--gradient-text);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.auth-brand-logo {
+  --aylaflow-logo-width: 210px;
 }
 
 .subtitle {
@@ -446,7 +436,7 @@ input:disabled {
   border: none;
   border-radius: 10px;
   background: var(--gradient-brand);
-  color: #fff;
+  color: var(--text-on-brand);
   font-size: 0.95rem;
   font-weight: 700;
   font-family: inherit;
@@ -505,7 +495,7 @@ input:disabled {
 }
 
 .link:hover {
-  color: #c084fc;
+  color: var(--brand-light);
 }
 
 @keyframes spin {

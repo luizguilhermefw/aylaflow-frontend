@@ -1000,7 +1000,7 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
   padding: 0.7rem 1.25rem;
   border: none;
   border-radius: 10px;
-  color: #fff;
+  color: var(--text-on-brand);
   background: var(--gradient-brand);
   box-shadow: 0 4px 16px var(--brand-glow);
   cursor: pointer;
@@ -1048,7 +1048,7 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
   width: 30px;
   height: 30px;
   margin-bottom: 1rem;
-  border: 3px solid rgba(167, 139, 250, 0.2);
+  border: 3px solid var(--brand-spinner-track);
   border-top-color: var(--brand-light);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
@@ -1181,7 +1181,7 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
 .type-option.selected {
   color: var(--brand-light);
   background: var(--brand-subtle);
-  border-color: rgba(124, 58, 237, 0.45);
+  border-color: var(--brand-border);
 }
 
 .type-option:disabled {
@@ -1368,7 +1368,7 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
 .review-list > div,
 .confirmation-list > div {
   padding: 0.875rem;
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--surface-hover);
   border: 1px solid var(--card-border);
   border-radius: 10px;
 }
@@ -1556,7 +1556,7 @@ watch(() => route.params.id, loadCampaign, { immediate: true })
   align-items: center;
   justify-content: center;
   overflow-y: auto;
-  background: rgba(0, 0, 0, 0.72);
+  background: var(--overlay-bg);
   backdrop-filter: blur(4px);
 }
 

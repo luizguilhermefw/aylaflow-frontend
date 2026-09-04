@@ -3,7 +3,7 @@
     <div class="section-heading">
       <div class="section-title-group">
         <span class="section-icon" aria-hidden="true">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg>
+          <AppIcon name="whatsapp" :size="24" />
         </span>
         <div>
           <h2 id="whatsapp-channels-title">Canais WhatsApp</h2>
@@ -20,7 +20,7 @@
     </p>
 
     <div v-if="state.successMessage" class="success-feedback" role="status" aria-live="polite">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+      <AppIcon name="confirm" :size="18" />
       {{ state.successMessage }}
     </div>
 
@@ -31,7 +31,7 @@
 
     <div v-else-if="state.loadError" class="channels-state error-state" role="alert">
       <span class="state-icon" aria-hidden="true">
-        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+        <AppIcon name="alert" :size="24" />
       </span>
       <h3>Não foi possível carregar os canais WhatsApp.</h3>
       <p>Verifique sua conexão e tente novamente.</p>
@@ -40,7 +40,7 @@
 
     <div v-else-if="state.data?.channels.length === 0" class="channels-state empty-state">
       <span class="state-icon" aria-hidden="true">
-        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg>
+        <AppIcon name="whatsapp" :size="24" />
       </span>
       <h3>Nenhum canal WhatsApp configurado.</h3>
       <p>Quando um canal for disponibilizado, ele aparecerá aqui.</p>
@@ -183,6 +183,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive } from 'vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import WhatsappQrModal from '@/components/settings/WhatsappQrModal.vue'
 import {
   canChangeWhatsappChannelRouting,
@@ -331,12 +332,12 @@ onUnmounted(controller.dispose)
 .connection-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .status-button, .reconnect-button, .routing-button { padding: .62rem .75rem; border-radius: 9px; font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
 .status-button { flex: 1; color: var(--text-secondary); background: transparent; border: 1px solid var(--card-border); }
-.reconnect-button { flex: 1; color: var(--brand-light); background: var(--brand-subtle); border: 1px solid rgba(139,92,246,.3); }
+.reconnect-button { flex: 1; color: var(--brand-light); background: var(--brand-subtle); border: 1px solid var(--brand-border); }
 .routing-button { width: 100%; display: inline-flex; align-items: center; justify-content: center; }
-.routing-button.activate { color: var(--brand-light); background: var(--brand-subtle); border: 1px solid rgba(139,92,246,.3); }
+.routing-button.activate { color: var(--brand-light); background: var(--brand-subtle); border: 1px solid var(--brand-border); }
 .routing-button.deactivate { color: var(--text-secondary); background: transparent; border: 1px solid var(--card-border); }
 .status-button:disabled, .reconnect-button:disabled, .routing-button:disabled { cursor: not-allowed; opacity: .5; }
-.btn-primary { padding: .65rem 1rem; color: #fff; background: var(--gradient-brand); border: none; border-radius: 10px; font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; }
+.btn-primary { padding: .65rem 1rem; color: var(--text-on-brand); background: var(--gradient-brand); border: none; border-radius: 10px; font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; }
 .button-spinner { width: 14px; height: 14px; margin-right: .45rem; border: 2px solid var(--card-border); border-top-color: currentColor; border-radius: 50%; animation: spin .7s linear infinite; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 @keyframes spin { to { transform: rotate(360deg); } }

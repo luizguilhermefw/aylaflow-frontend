@@ -27,7 +27,7 @@ import { COMPANY_PENDING_GATE_COPY } from '@/features/company-access/company-acc
   flex-direction: column;
   text-align: center;
   background: var(--card-bg);
-  border: 1px dashed rgba(167, 139, 250, 0.3);
+  border: 1px dashed var(--brand-border);
   border-radius: 20px;
 }
 

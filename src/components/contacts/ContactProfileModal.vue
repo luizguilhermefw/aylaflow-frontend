@@ -173,7 +173,7 @@ function confirmAction() {
 </script>
 
 <style scoped>
-.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 1.5rem; display: flex; align-items: center; justify-content: center; overflow-y: auto; background: rgba(0,0,0,.72); backdrop-filter: blur(4px); }
+.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 1.5rem; display: flex; align-items: center; justify-content: center; overflow-y: auto; background: var(--overlay-bg); backdrop-filter: blur(4px); }
 .profile-modal { width: 100%; max-width: 620px; padding: 1.5rem; background: var(--sidebar-bg); border: 1px solid var(--card-border); border-radius: 18px; box-shadow: var(--card-shadow); }
 .profile-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
 .profile-identity { display: flex; align-items: center; gap: 0.875rem; }
@@ -196,7 +196,7 @@ function confirmAction() {
 .active-text { color: var(--success); }
 .inactive-text { color: var(--text-muted); }
 .management-button { flex-shrink: 0; padding: .55rem .75rem; border: 1px solid var(--card-border); border-radius: 9px; color: var(--brand-light); background: var(--brand-subtle); font-size: .75rem; font-weight: 650; cursor: pointer; }
-.management-button:hover:not(:disabled) { border-color: rgba(167,139,250,.35); background: rgba(124,58,237,.2); }
+.management-button:hover:not(:disabled) { border-color: var(--brand-border); background: var(--brand-surface-strong); }
 .management-button:disabled { cursor: not-allowed; opacity: .55; }
 .action-success { margin-top: 1rem; padding: .75rem .875rem; color: var(--success); background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25); border-radius: 10px; font-size: .78rem; }
 .profile-grid { margin-top: 1.25rem; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
@@ -211,7 +211,7 @@ function confirmAction() {
 .profile-actions { margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.75rem; }
 .btn-primary, .btn-secondary, .btn-danger { padding: 0.65rem 1rem; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
 .btn-primary, .btn-danger { display: inline-flex; align-items: center; justify-content: center; }
-.btn-primary { border: none; color: #fff; background: var(--gradient-brand); }
+.btn-primary { border: none; color: var(--text-on-brand); background: var(--gradient-brand); }
 .btn-secondary { border: 1px solid var(--card-border); color: var(--text-secondary); background: transparent; }
 .btn-danger { border: 1px solid rgba(248,113,113,.35); color: #fff; background: rgba(239,68,68,.7); }
 .btn-primary:disabled, .btn-secondary:disabled, .btn-danger:disabled { cursor: not-allowed; opacity: .55; }
