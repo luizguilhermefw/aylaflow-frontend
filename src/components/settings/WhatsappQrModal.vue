@@ -9,7 +9,7 @@
     >
       <div class="modal-heading">
         <span class="modal-icon" aria-hidden="true">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/><path d="M21 21v.01"/><path d="M12 7v3a2 2 0 0 1-2 2H7"/><path d="M3 12h.01"/><path d="M12 3h.01"/><path d="M12 16v.01"/><path d="M16 12h1"/><path d="M21 12v.01"/><path d="M12 21v-1"/></svg>
+          <AppIcon name="qrCode" :size="24" />
         </span>
         <div>
           <h2 id="whatsapp-connection-title">Reconectar WhatsApp</h2>
@@ -47,7 +47,7 @@
 
       <div v-if="connected" class="modal-state connected-state" role="status" aria-live="polite">
         <span class="connected-icon" aria-hidden="true">
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          <AppIcon name="confirm" :size="24" />
         </span>
         <h3>WhatsApp conectado</h3>
         <p>A conexão foi confirmada. O routing permanece inalterado.</p>
@@ -149,6 +149,7 @@
 
 <script setup lang="ts">
 import { nextTick, onUnmounted, ref, watch } from 'vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import type { WhatsappConnectionMode } from '@/features/whatsapp-channels/whatsapp-channel.logic'
 
 const props = defineProps<{
@@ -202,7 +203,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 </script>
 
 <style scoped>
-.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 1.5rem; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.72); backdrop-filter: blur(4px); }
+.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 1.5rem; display: flex; align-items: center; justify-content: center; background: var(--overlay-bg); backdrop-filter: blur(4px); }
 .connection-modal { width: min(100%, 560px); max-height: calc(100vh - 3rem); padding: 1.5rem; overflow-y: auto; background: var(--sidebar-bg); border: 1px solid var(--card-border); border-radius: 18px; box-shadow: var(--card-shadow); }
 .modal-heading { display: flex; align-items: flex-start; gap: 1rem; }
 .modal-icon { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; color: var(--brand-light); background: var(--brand-subtle); border-radius: 12px; }
@@ -210,7 +211,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 .modal-heading p { margin-top: .35rem; color: var(--text-muted); font-size: .8rem; }
 .connection-modes { margin-top: 1.25rem; padding: .25rem; display: grid; grid-template-columns: 1fr 1fr; background: var(--bg-primary); border: 1px solid var(--card-border); border-radius: 11px; }
 .connection-modes button { padding: .6rem .75rem; color: var(--text-muted); background: transparent; border: 0; border-radius: 8px; font: inherit; font-size: .76rem; font-weight: 600; cursor: pointer; }
-.connection-modes button.active { color: var(--brand-light); background: var(--brand-subtle); box-shadow: inset 0 0 0 1px rgba(139,92,246,.25); }
+.connection-modes button.active { color: var(--brand-light); background: var(--brand-subtle); box-shadow: inset 0 0 0 1px var(--brand-border); }
 .connection-modes button:disabled { cursor: not-allowed; opacity: .65; }
 .modal-state { min-height: 240px; margin-top: 1.25rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .modal-state p { margin-top: .55rem; color: var(--text-muted); font-size: .8rem; }
@@ -235,14 +236,14 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 .pairing-code-card { margin-top: 1rem; padding: 1rem; display: grid; justify-items: center; gap: .75rem; background: var(--bg-primary); border: 1px solid var(--card-border); border-radius: 13px; text-align: center; }
 .pairing-code-card span { color: var(--text-muted); font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
 .pairing-code-card code { color: var(--text-primary); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: clamp(1.25rem, 5vw, 1.75rem); font-weight: 700; letter-spacing: .12em; overflow-wrap: anywhere; }
-.copy-button { padding: .55rem .8rem; color: var(--brand-light); background: var(--brand-subtle); border: 1px solid rgba(139,92,246,.3); border-radius: 9px; font: inherit; font-size: .74rem; font-weight: 600; cursor: pointer; }
+.copy-button { padding: .55rem .8rem; color: var(--brand-light); background: var(--brand-subtle); border: 1px solid var(--brand-border); border-radius: 9px; font: inherit; font-size: .74rem; font-weight: 600; cursor: pointer; }
 .copy-success { margin-top: .65rem; color: var(--success); font-size: .72rem; text-align: center; }
 .pairing-instructions { margin: 1rem 0 0 1.25rem; color: var(--text-secondary); font-size: .77rem; line-height: 1.75; }
 .pairing-checking { display: block; text-align: center; }
 .modal-error { margin-top: .75rem; padding: .75rem .9rem; color: var(--error); background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 10px; font-size: .8rem; }
 .modal-actions { margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: .75rem; }
 .btn-primary, .btn-secondary { padding: .65rem 1rem; border-radius: 10px; font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; }
-.btn-primary { color: #fff; background: var(--gradient-brand); border: none; }
+.btn-primary { color: var(--text-on-brand); background: var(--gradient-brand); border: none; }
 .btn-secondary { color: var(--text-secondary); background: var(--bg-primary); border: 1px solid var(--card-border); }
 .button-spinner { width: 14px; height: 14px; margin-right: .45rem; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
 button:disabled, input:disabled { cursor: not-allowed; opacity: .55; }

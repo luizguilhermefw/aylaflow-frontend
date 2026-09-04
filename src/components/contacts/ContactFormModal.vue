@@ -218,7 +218,7 @@ function submitForm() {
   align-items: center;
   justify-content: center;
   overflow-y: auto;
-  background: rgba(0, 0, 0, 0.72);
+  background: var(--overlay-bg);
   backdrop-filter: blur(4px);
 }
 
@@ -282,7 +282,7 @@ function submitForm() {
   outline: none;
   color: var(--text-primary);
   background: var(--input-bg);
-  color-scheme: dark;
+  color-scheme: var(--native-control-color-scheme);
   font: inherit;
 }
 
@@ -290,10 +290,10 @@ function submitForm() {
 .form-field select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-glow); }
 .form-field select option {
   color: var(--text-primary);
-  background: #1a1a23;
+  background: var(--sidebar-bg);
 }
-.form-field select option:checked { color: #fff; background: #5b21b6; }
-.form-field select option:hover { color: #fff; background: var(--brand); }
+.form-field select option:checked { color: var(--text-on-brand); background: var(--brand); }
+.form-field select option:hover { color: var(--text-on-brand); background: var(--brand); }
 .form-field input[type='date']::-webkit-calendar-picker-indicator {
   cursor: pointer;
   filter: invert(78%) sepia(8%) saturate(691%) hue-rotate(211deg) brightness(90%);
@@ -313,7 +313,7 @@ function submitForm() {
 
 .modal-actions { margin-top: 1.25rem; display: flex; justify-content: flex-end; gap: 0.75rem; }
 .btn-primary, .btn-secondary { padding: 0.68rem 1rem; border-radius: 10px; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
-.btn-primary { display: inline-flex; align-items: center; border: none; color: #fff; background: var(--gradient-brand); }
+.btn-primary { display: inline-flex; align-items: center; border: none; color: var(--text-on-brand); background: var(--gradient-brand); }
 .btn-secondary { border: 1px solid var(--card-border); color: var(--text-secondary); background: transparent; }
 .btn-secondary:hover:not(:disabled) { color: var(--text-primary); background: var(--nav-hover); }
 .button-spinner { width: 15px; height: 15px; margin-right: 0.5rem; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }

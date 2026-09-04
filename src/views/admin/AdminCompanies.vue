@@ -253,7 +253,7 @@ th, td { padding: 0.95rem 1rem; text-align: left; border-bottom: 1px solid var(-
 th { color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
 td { color: var(--text-secondary); font-size: 0.8rem; }
 tbody tr:last-child td { border-bottom: none; }
-tbody tr:hover { background: rgba(124, 58, 237, 0.025); }
+tbody tr:hover { background: var(--surface-hover); }
 .company-name { color: var(--text-primary); font-weight: 600; }
 .actions-heading { min-width: 190px; }
 
@@ -272,7 +272,7 @@ tbody tr:hover { background: rgba(124, 58, 237, 0.025); }
 
 .row-actions { display: flex; gap: 0.45rem; }
 .action-button { padding: 0.42rem 0.62rem; border-radius: 8px; font: inherit; font-size: 0.72rem; font-weight: 600; cursor: pointer; }
-.action-primary { color: var(--brand-light); background: var(--brand-subtle); border: 1px solid rgba(139, 92, 246, 0.3); }
+.action-primary { color: var(--brand-light); background: var(--brand-subtle); border: 1px solid var(--brand-border); }
 .action-warning { color: #fdba74; background: rgba(249, 115, 22, 0.08); border: 1px solid rgba(251, 146, 60, 0.25); }
 .action-destructive { color: #fca5a5; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(248, 113, 113, 0.25); }
 .action-button:disabled { cursor: not-allowed; opacity: 0.5; }

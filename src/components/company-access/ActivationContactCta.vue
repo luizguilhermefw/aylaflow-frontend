@@ -52,7 +52,7 @@ const showMissingContactFeedback = ref(false)
   justify-content: center;
   border: none;
   border-radius: 10px;
-  color: #fff;
+  color: var(--text-on-brand);
   background: var(--gradient-brand);
   box-shadow: 0 4px 16px var(--brand-glow);
   font: inherit;

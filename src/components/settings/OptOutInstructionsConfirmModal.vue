@@ -9,7 +9,7 @@
     >
       <div class="modal-heading">
         <span class="modal-icon" aria-hidden="true">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M3.34 17a2 2 0 0 0 1.73 3h13.86a2 2 0 0 0 1.73-3L13.73 5a2 2 0 0 0-3.46 0Z"/></svg>
+          <AppIcon name="warning" :size="24" />
         </span>
         <div>
           <h2 id="opt-out-modal-title">Desativar instrução de cancelamento</h2>
@@ -62,6 +62,7 @@
 
 <script setup lang="ts">
 import { nextTick, onUnmounted, ref, watch } from 'vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import type { OptOutInstructionsDeclaration } from '@/services/messaging-policy.service'
 
 const props = defineProps<{
@@ -107,7 +108,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown))
 </script>
 
 <style scoped>
-.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 1.5rem; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.72); backdrop-filter: blur(4px); }
+.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 1.5rem; display: flex; align-items: center; justify-content: center; background: var(--overlay-bg); backdrop-filter: blur(4px); }
 .confirmation-modal { width: min(100%, 560px); max-height: calc(100vh - 3rem); padding: 1.5rem; overflow-y: auto; background: var(--sidebar-bg); border: 1px solid rgba(248,113,113,.3); border-radius: 18px; box-shadow: var(--card-shadow); }
 .modal-heading { display: flex; gap: 1rem; align-items: flex-start; }
 .modal-icon { width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; color: #f87171; background: rgba(239,68,68,.1); border-radius: 12px; }

@@ -5,13 +5,13 @@
   >
     <template #actions>
       <button type="button" class="btn-primary topbar-action" @click="openCreateForm">
-        <span aria-hidden="true">+</span>
+        <AppIcon name="add" :size="18" />
         Nova automação
       </button>
     </template>
 
     <div v-if="state.successMessage" class="success-feedback" role="status" aria-live="polite">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+      <AppIcon name="confirm" :size="18" />
       {{ state.successMessage }}
     </div>
 
@@ -22,7 +22,7 @@
 
     <section v-else-if="state.loadError" class="state-card error-state" role="alert">
       <span class="state-icon" aria-hidden="true">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+        <AppIcon name="alert" :size="24" />
       </span>
       <h2>Não foi possível carregar suas automações.</h2>
       <p>Verifique sua conexão e tente novamente.</p>
@@ -31,7 +31,7 @@
 
     <section v-else-if="state.automations.length === 0" class="state-card">
       <span class="state-icon" aria-hidden="true">
-        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+        <AppIcon name="automation" :size="24" />
       </span>
       <h2>Nenhuma automação recorrente disponível.</h2>
       <p>Crie uma automação para iniciar um fluxo recorrente de relacionamento.</p>
@@ -50,7 +50,7 @@
         <article v-for="automation in state.automations" :key="automation.id" class="automation-card">
           <div class="card-heading">
             <span class="automation-icon" aria-hidden="true">
-              <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+              <AppIcon name="automation" :size="22" />
             </span>
             <span class="status-badge" :class="automation.isActive ? 'active' : 'inactive'">
               <span class="status-dot" aria-hidden="true" />
@@ -168,6 +168,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import AutomationFormModal from '@/features/automations/AutomationFormModal.vue'
 import { automationService, type Automation } from '@/services/automation.service'
 import {
@@ -335,19 +336,19 @@ onMounted(loadAutomations)
 .card-actions { margin-top: 1.15rem; display: flex; flex-wrap: wrap; gap: .5rem; }
 .card-button { flex: 1 1 auto; padding: .62rem .7rem; border-radius: 9px; font: inherit; font-size: .75rem; font-weight: 600; cursor: pointer; }
 .card-button.edit { color: var(--text-secondary); background: transparent; border: 1px solid var(--card-border); }
-.card-button.activate { color: var(--brand-light); background: var(--brand-subtle); border: 1px solid rgba(139,92,246,.3); }
+.card-button.activate { color: var(--brand-light); background: var(--brand-subtle); border: 1px solid var(--brand-border); }
 .card-button.deactivate { color: #fdba74; background: rgba(249,115,22,.08); border: 1px solid rgba(251,146,60,.25); }
 .card-button.delete { color: #fca5a5; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.24); }
-.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 1.5rem; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.72); backdrop-filter: blur(4px); }
+.modal-backdrop { position: fixed; inset: 0; z-index: 100; padding: 1.5rem; display: flex; align-items: center; justify-content: center; background: var(--overlay-bg); backdrop-filter: blur(4px); }
 .confirmation-modal { width: min(100%, 450px); padding: 1.5rem; background: var(--sidebar-bg); border: 1px solid var(--card-border); border-radius: 18px; box-shadow: var(--card-shadow); }
 .confirmation-modal h2 { color: var(--text-primary); font-size: 1.15rem; }
 .confirmation-modal > p { margin-top: .55rem; color: var(--text-muted); font-size: .84rem; line-height: 1.55; }
 .confirmation-modal .action-error { color: var(--error); }
 .modal-actions { margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: .75rem; }
 .btn-primary, .btn-secondary, .btn-danger { padding: .65rem 1rem; border-radius: 10px; font: inherit; font-size: .84rem; font-weight: 600; cursor: pointer; }
-.btn-primary, .btn-danger { display: inline-flex; align-items: center; justify-content: center; border: none; color: #fff; }
-.btn-primary { background: var(--gradient-brand); }
-.btn-danger { background: var(--error); }
+.btn-primary, .btn-danger { display: inline-flex; align-items: center; justify-content: center; border: none; }
+.btn-primary { color: var(--text-on-brand); background: var(--gradient-brand); }
+.btn-danger { color: #fff; background: var(--error); }
 .btn-secondary { color: var(--text-secondary); background: transparent; border: 1px solid var(--card-border); }
 button:disabled { cursor: not-allowed; opacity: .55; }
 button:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 2px; }

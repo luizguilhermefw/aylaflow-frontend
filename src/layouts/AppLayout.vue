@@ -2,7 +2,7 @@
   <div class="app-layout">
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <span class="logo-icon">⚡</span>
+        <AppIcon class="logo-icon" name="brand" :size="24" />
         <span class="logo-text">AylaFlow</span>
       </div>
 
@@ -13,7 +13,7 @@
           class="nav-item"
           exact-active-class="active"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+          <AppIcon name="dashboard" />
           Dashboard
         </RouterLink>
         <RouterLink
@@ -23,7 +23,7 @@
           :class="{ active: route.name === 'campaigns' || route.name === 'campaign-detail' }"
           exact-active-class="active"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3Z"/><path d="M11.6 16.8 13 21H7l-1.8-6.2"/><path d="M8 9v6"/></svg>
+          <AppIcon name="campaign" />
           Campanhas
         </RouterLink>
         <RouterLink
@@ -32,7 +32,7 @@
           class="nav-item"
           exact-active-class="active"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          <AppIcon name="automation" />
           Automações
         </RouterLink>
         <RouterLink
@@ -41,11 +41,11 @@
           class="nav-item"
           exact-active-class="active"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <AppIcon name="contacts" />
           Contatos
         </RouterLink>
         <button id="nav-reports" type="button" class="nav-item nav-placeholder" aria-disabled="true">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>
+          <AppIcon name="reports" />
           Relatórios
         </button>
         <RouterLink
@@ -54,7 +54,7 @@
           class="nav-item"
           exact-active-class="active"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          <AppIcon name="settings" />
           Configurações
         </RouterLink>
 
@@ -66,7 +66,7 @@
             class="nav-item"
             exact-active-class="active"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M6 21V7l6-4 6 4v14"/><path d="M9 9h1"/><path d="M14 9h1"/><path d="M9 13h1"/><path d="M14 13h1"/></svg>
+            <AppIcon name="company" />
             Empresas
           </RouterLink>
         </div>
@@ -74,7 +74,7 @@
 
       <div class="sidebar-footer">
         <button id="btn-logout" class="logout-btn" type="button" aria-label="Sair da conta" @click="handleLogout">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+          <AppIcon name="logout" />
           Sair
         </button>
       </div>
@@ -102,6 +102,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import { useAuthStore } from '@/store/auth.store'
 import CompanyActivationGate from '@/components/company-access/CompanyActivationGate.vue'
 import { shouldShowCompanyActivationGate } from '@/features/company-access/company-access.logic'
@@ -161,8 +162,8 @@ onMounted(() => {
 }
 
 .logo-icon {
-  font-size: 1.4rem;
-  filter: drop-shadow(0 0 6px #7c3aed88);
+  color: var(--brand-primary);
+  filter: drop-shadow(0 0 6px var(--brand-logo-shadow));
 }
 
 .logo-text {
@@ -195,6 +196,12 @@ onMounted(() => {
   transition: background 0.15s, color 0.15s;
 }
 
+.nav-item svg,
+.logout-btn svg {
+  flex-shrink: 0;
+  color: currentColor;
+}
+
 .nav-item:hover {
   background: var(--nav-hover);
   color: var(--text-primary);
@@ -202,8 +209,12 @@ onMounted(() => {
 
 .nav-item.active {
   background: var(--brand-subtle);
-  color: var(--brand-light);
+  color: var(--nav-active-text);
   font-weight: 600;
+}
+
+.nav-item.active svg {
+  color: var(--nav-active-icon);
 }
 
 .nav-placeholder {

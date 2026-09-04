@@ -2,7 +2,7 @@
   <AppLayout title="Dashboard" subtitle="Visão geral das suas automações">
     <template #actions>
       <RouterLink id="btn-new-automation" class="btn-action" to="/automations">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg>
+        <AppIcon name="add" :size="18" />
         Nova Automação
       </RouterLink>
     </template>
@@ -12,7 +12,7 @@
       <!-- Welcome Banner -->
       <div class="welcome-banner">
         <div class="welcome-content">
-          <div class="welcome-badge">✨ Bem-vindo ao AylaFlow</div>
+          <div class="welcome-badge"><AppIcon name="sparkles" :size="18" /> Bem-vindo ao AylaFlow</div>
           <h2 class="welcome-title">Reative seus clientes com automações inteligentes</h2>
           <p class="welcome-desc">Configure fluxos automáticos no WhatsApp e recupere clientes inativos com mensagens personalizadas no momento certo.</p>
           <RouterLink id="btn-start-automation" class="btn-start" to="/automations">
@@ -21,15 +21,15 @@
         </div>
         <div class="welcome-illustration" aria-hidden="true">
           <div class="float-card fc1">
-            <span>📲</span>
+            <AppIcon name="whatsapp" :size="18" />
             <span>WhatsApp</span>
           </div>
           <div class="float-card fc2">
-            <span>🤖</span>
+            <AppIcon name="automation" :size="18" />
             <span>Automação</span>
           </div>
           <div class="float-card fc3">
-            <span>📈</span>
+            <AppIcon name="trend" :size="18" />
             <span>Resultados</span>
           </div>
         </div>
@@ -49,7 +49,7 @@
       <div class="stats-grid">
         <div class="stat-card" id="stat-active">
           <div class="stat-icon purple">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            <AppIcon name="automation" />
           </div>
           <div class="stat-data">
             <span class="stat-value">{{ displayMetric(summary?.activeAutomations) }}</span>
@@ -59,7 +59,7 @@
 
         <div class="stat-card" id="stat-contacts">
           <div class="stat-icon green">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            <AppIcon name="contacts" />
           </div>
           <div class="stat-data">
             <span class="stat-value">{{ displayMetric(summary?.contacts) }}</span>
@@ -69,7 +69,7 @@
 
         <div class="stat-card" id="stat-messages">
           <div class="stat-icon blue">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <AppIcon name="message" />
           </div>
           <div class="stat-data">
             <span class="stat-value">{{ displayMetric(summary?.messagesSent) }}</span>
@@ -79,7 +79,7 @@
 
         <div class="stat-card" id="stat-campaigns">
           <div class="stat-icon orange">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            <AppIcon name="trend" />
           </div>
           <div class="stat-data">
             <span class="stat-value">{{ displayMetric(summary?.campaigns) }}</span>
@@ -98,7 +98,7 @@
         class="empty-state"
         id="empty-automations"
       >
-        <div class="empty-icon">🚀</div>
+        <div class="empty-icon" aria-hidden="true"><AppIcon name="automation" :size="24" /></div>
         <h3>Nenhuma automação criada ainda</h3>
         <p>Crie sua primeira automação e comece a recuperar clientes inativos automaticamente.</p>
         <RouterLink id="btn-create-first" class="btn-action" to="/automations">
@@ -144,6 +144,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, toRef } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import CompanyActivationCard from '@/components/company-access/CompanyActivationCard.vue'
 import { isPendingCompany } from '@/features/company-access/company-access.logic'
 import { companyAccessIssue } from '@/features/company-access/company-access.state'
@@ -183,7 +184,7 @@ onMounted(loadDashboard)
   gap: 0.5rem;
   padding: 0.65rem 1.25rem;
   background: var(--gradient-brand);
-  color: #fff;
+  color: var(--text-on-brand);
   border: none;
   border-radius: 10px;
   font-size: 0.875rem;
@@ -219,12 +220,14 @@ onMounted(loadDashboard)
   right: -60px;
   width: 280px;
   height: 280px;
-  background: radial-gradient(circle, #7c3aed22, transparent 70%);
+  background: radial-gradient(circle, var(--brand-subtle), transparent 70%);
   pointer-events: none;
 }
 
 .welcome-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   padding: 0.3rem 0.875rem;
   background: var(--brand-subtle);
   color: var(--brand-light);
@@ -254,7 +257,7 @@ onMounted(loadDashboard)
 .btn-start {
   padding: 0.75rem 1.5rem;
   background: var(--gradient-brand);
-  color: #fff;
+  color: var(--text-on-brand);
   border: none;
   border-radius: 10px;
   font-size: 0.9rem;
@@ -333,7 +336,7 @@ onMounted(loadDashboard)
   flex-shrink: 0;
 }
 
-.stat-icon.purple { background: rgba(124, 58, 237, 0.15); color: #a78bfa; }
+.stat-icon.purple { background: var(--brand-subtle); color: var(--brand-light); }
 .stat-icon.green  { background: rgba(34, 197, 94, 0.15);  color: #4ade80; }
 .stat-icon.blue   { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
 .stat-icon.orange { background: rgba(251, 146, 60, 0.15); color: #fb923c; }
@@ -399,7 +402,7 @@ onMounted(loadDashboard)
 .spinner {
   width: 28px;
   height: 28px;
-  border: 3px solid rgba(167, 139, 250, 0.2);
+  border: 3px solid var(--brand-spinner-track);
   border-top-color: var(--brand-light);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
@@ -495,7 +498,7 @@ onMounted(loadDashboard)
 
 .automation-status.inactive {
   color: var(--text-secondary);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--surface-active);
 }
 
 /* ── Empty State ── */
@@ -508,7 +511,7 @@ onMounted(loadDashboard)
   animation: fadeInUp 0.5s ease 0.2s both;
 }
 
-.empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+.empty-icon { margin-bottom: 1rem; color: var(--brand-light); }
 .empty-state h3 { color: var(--text-primary); font-size: 1.1rem; margin-bottom: 0.5rem; }
 .empty-state p { color: var(--text-muted); font-size: 0.875rem; max-width: 380px; margin: 0 auto 1.5rem; line-height: 1.6; }
 .empty-state .btn-action { display: inline-flex; }

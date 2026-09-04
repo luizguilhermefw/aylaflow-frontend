@@ -3,7 +3,7 @@
     <div class="login-card">
       <div class="login-header">
         <div class="logo">
-          <span class="logo-icon">⚡</span>
+          <AppIcon class="logo-icon" name="brand" :size="24" />
           <span class="logo-text">AylaFlow</span>
         </div>
         <p class="subtitle">Acesse sua conta para continuar</p>
@@ -80,6 +80,7 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import AuthLayout from '@/layouts/AuthLayout.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import { useAuthStore } from '@/store/auth.store'
 import { AxiosError } from 'axios'
 import { RouterLink } from 'vue-router'
@@ -170,8 +171,8 @@ async function handleLogin() {
 }
 
 .logo-icon {
-  font-size: 1.8rem;
-  filter: drop-shadow(0 0 8px #7c3aed88);
+  color: var(--brand-primary);
+  filter: drop-shadow(0 0 8px var(--brand-logo-shadow));
 }
 
 .logo-text {
@@ -296,7 +297,7 @@ input:disabled {
   border: none;
   border-radius: 10px;
   background: var(--gradient-brand);
-  color: #fff;
+  color: var(--text-on-brand);
   font-size: 0.95rem;
   font-weight: 700;
   font-family: inherit;
@@ -375,6 +376,6 @@ input:disabled {
 }
 
 .link:hover {
-  color: #c084fc;
+  color: var(--brand-light);
 }
 </style>

@@ -97,7 +97,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.72);
+  background: var(--overlay-bg);
   backdrop-filter: blur(4px);
 }
 
@@ -196,7 +196,7 @@ onUnmounted(() => {
 
 .btn-primary {
   border: none;
-  color: #fff;
+  color: var(--text-on-brand);
   background: var(--gradient-brand);
 }
 
