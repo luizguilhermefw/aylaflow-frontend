@@ -9,6 +9,7 @@ export type {
   WhatsappChannelConnectionResponse,
   WhatsappChannelListResponse,
   WhatsappChannelPairingCodeResponse,
+  WhatsappChannelProvisionResponse,
   WhatsappChannelQrResponse,
   WhatsappChannelRoutingResponse,
   WhatsappConnectionStatus,
