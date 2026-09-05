@@ -3,6 +3,7 @@ import type {
   WhatsappChannelConnectionResponse,
   WhatsappChannelListResponse,
   WhatsappChannelPairingCodeResponse,
+  WhatsappChannelProvisionResponse,
   WhatsappChannelQrResponse,
   WhatsappChannelRoutingResponse,
   WhatsappConnectionStatus,
@@ -10,6 +11,7 @@ import type {
 
 export interface WhatsappChannelRepository {
   listWhatsappChannels(): Promise<WhatsappChannelListResponse>
+  provisionWhatsappChannel(idempotencyKey: string): Promise<WhatsappChannelProvisionResponse>
   getWhatsappChannelConnection(channelId: string): Promise<WhatsappChannelConnectionResponse>
   getWhatsappChannelQrCode(channelId: string): Promise<WhatsappChannelQrResponse>
   requestWhatsappChannelPairingCode(
@@ -31,6 +33,8 @@ export interface WhatsappChannelState {
   updatingChannelId: string | null
   actionError: string
   successMessage: string
+  provisioning: boolean
+  provisioningError: string
   qrChannelId: string | null
   qrCode: string
   qrLoading: boolean
@@ -93,6 +97,8 @@ export function emptyWhatsappChannelState(): WhatsappChannelState {
     updatingChannelId: null,
     actionError: '',
     successMessage: '',
+    provisioning: false,
+    provisioningError: '',
     qrChannelId: null,
     qrCode: '',
     qrLoading: false,
@@ -111,6 +117,37 @@ export function emptyWhatsappChannelState(): WhatsappChannelState {
 
 export function canManageWhatsappChannels(role: string | null | undefined): boolean {
   return role === 'OWNER' || role === 'MANAGER'
+}
+
+export function canProvisionWhatsappChannel(
+  data: WhatsappChannelListResponse | null,
+  role: string | null | undefined,
+): boolean {
+  return Boolean(
+    data
+    && data.channels.length === 0
+    && data.available > 0
+    && canManageWhatsappChannels(role),
+  )
+}
+
+export function createWhatsappProvisioningIdempotencyKey(): string {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
+  }
+
+  const bytes = new Uint8Array(16)
+  if (typeof globalThis.crypto?.getRandomValues === 'function') {
+    globalThis.crypto.getRandomValues(bytes)
+  } else {
+    for (let index = 0; index < bytes.length; index += 1) {
+      bytes[index] = Math.floor(Math.random() * 256)
+    }
+  }
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80
+  const hex = Array.from(bytes, (value) => value.toString(16).padStart(2, '0')).join('')
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
 }
 
 export function whatsappConnectionStatusLabel(status: WhatsappConnectionStatus): string {
@@ -304,11 +341,19 @@ export function whatsappPairingCodeRequestError(status?: number): string {
   return 'Não foi possível gerar o código de pareamento. Tente novamente.'
 }
 
+export function whatsappChannelProvisioningError(error: unknown): string {
+  const status = errorStatus(error)
+  if (status === 403) return 'Você não tem permissão para conectar um canal WhatsApp.'
+  if (status === 409) return 'Não há capacidade disponível para adicionar um novo canal WhatsApp.'
+  return 'Não foi possível conectar o WhatsApp. Tente novamente.'
+}
+
 export function createWhatsappChannelController(
   repository: WhatsappChannelRepository,
   state: WhatsappChannelState = emptyWhatsappChannelState(),
   qrScheduler: WhatsappQrPollingScheduler = defaultQrPollingScheduler,
   clipboard: WhatsappClipboard = defaultWhatsappClipboard,
+  idempotencyKeyFactory: () => string = createWhatsappProvisioningIdempotencyKey,
 ) {
   let loadGeneration = 0
   const syncTokens = new Map<string, symbol>()
@@ -316,6 +361,7 @@ export function createWhatsappChannelController(
   let qrPollingHandle: ReturnType<typeof setTimeout> | null = null
   let qrPollingGeneration = 0
   let connectionAttemptGeneration = 0
+  let provisioningIdempotencyKey: string | null = null
 
   function setChannelSyncing(channelId: string, syncing: boolean) {
     state.syncingChannelIds = syncing
@@ -651,13 +697,9 @@ export function createWhatsappChannelController(
     return true
   }
 
-  async function openReconnectModal(
-    channel: WhatsappChannel,
-    role: string | null | undefined,
-  ): Promise<boolean> {
-    if (!canManageWhatsappChannels(role) || !canReconnectWhatsapp(channel)) return false
+  function initializeConnectionModal(channelId: string) {
     invalidateConnectionAttempt()
-    state.qrChannelId = channel.id
+    state.qrChannelId = channelId
     state.connectionMode = 'qr'
     state.qrCode = ''
     state.qrError = ''
@@ -668,7 +710,66 @@ export function createWhatsappChannelController(
     state.pairingError = ''
     state.pairingCopyMessage = ''
     state.pairingCopyError = ''
+  }
+
+  async function openReconnectModal(
+    channel: WhatsappChannel,
+    role: string | null | undefined,
+  ): Promise<boolean> {
+    if (!canManageWhatsappChannels(role) || !canReconnectWhatsapp(channel)) return false
+    initializeConnectionModal(channel.id)
     return true
+  }
+
+  async function provisionWhatsappChannel(
+    role: string | null | undefined,
+  ): Promise<boolean> {
+    if (
+      state.provisioning
+      || !canProvisionWhatsappChannel(state.data, role)
+    ) {
+      return false
+    }
+
+    state.provisioning = true
+    state.provisioningError = ''
+    state.actionError = ''
+    state.successMessage = ''
+    provisioningIdempotencyKey ??= idempotencyKeyFactory()
+
+    try {
+      const result = await repository.provisionWhatsappChannel(provisioningIdempotencyKey)
+      const refreshed = await repository.listWhatsappChannels()
+      const channel = refreshed.channels.find((item) => item.id === result.channelId)
+      if (!channel) throw new Error('Provisioned channel was not listed')
+
+      loadGeneration += 1
+      const generation = loadGeneration
+      syncTokens.clear()
+      state.data = refreshed
+      state.loadError = false
+      state.syncingChannelIds = []
+      state.connectionSyncErrors = {}
+
+      initializeConnectionModal(channel.id)
+      state.qrConnected = result.connectionStatus === 'CONNECTED'
+      if (result.qrCode && whatsappQrImageSource(result.qrCode)) {
+        state.qrCode = result.qrCode
+        startQrPolling()
+      } else if (state.qrConnected) {
+        markConnectionConnected(channel.id)
+      }
+
+      state.successMessage ||= 'Canal WhatsApp criado. Conclua a conexão para começar a usar.'
+      provisioningIdempotencyKey = null
+      void syncAllConnections(generation)
+      return true
+    } catch (error) {
+      state.provisioningError = whatsappChannelProvisioningError(error)
+      return false
+    } finally {
+      state.provisioning = false
+    }
   }
 
   function closeReconnectModal(): boolean {
@@ -769,6 +870,7 @@ export function createWhatsappChannelController(
     syncChannelConnection,
     syncAllConnections,
     updateRouting,
+    provisionWhatsappChannel,
     requestQrCode,
     requestPairingCode,
     setPairingPhone,

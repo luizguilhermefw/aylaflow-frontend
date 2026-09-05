@@ -41,6 +41,12 @@ export interface WhatsappChannelQrResponse {
   qrCode?: string
 }
 
+export interface WhatsappChannelProvisionResponse {
+  channelId: string
+  connectionStatus: WhatsappConnectionStatus
+  qrCode?: string
+}
+
 export interface WhatsappChannelPairingCodeResponse {
   channelId: string
   connectionStatus: WhatsappConnectionStatus
@@ -49,7 +55,11 @@ export interface WhatsappChannelPairingCodeResponse {
 
 export interface WhatsappChannelHttpClient {
   get<T>(url: string): Promise<{ data: T }>
-  post<T>(url: string, payload?: unknown): Promise<{ data: T }>
+  post<T>(
+    url: string,
+    payload?: unknown,
+    config?: { headers?: Record<string, string> },
+  ): Promise<{ data: T }>
   patch<T>(url: string, payload: unknown): Promise<{ data: T }>
 }
 
@@ -73,6 +83,16 @@ export function createWhatsappChannelRepository(http: WhatsappChannelHttpClient)
   return {
     async listWhatsappChannels(): Promise<WhatsappChannelListResponse> {
       const { data } = await http.get<WhatsappChannelListResponse>(WHATSAPP_CHANNELS_ENDPOINT)
+      return data
+    },
+    async provisionWhatsappChannel(
+      idempotencyKey: string,
+    ): Promise<WhatsappChannelProvisionResponse> {
+      const { data } = await http.post<WhatsappChannelProvisionResponse>(
+        WHATSAPP_CHANNELS_ENDPOINT,
+        {},
+        { headers: { 'Idempotency-Key': idempotencyKey } },
+      )
       return data
     },
     async getWhatsappChannelConnection(

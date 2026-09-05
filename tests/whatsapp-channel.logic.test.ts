@@ -4,7 +4,9 @@ import test from 'node:test'
 import {
   canChangeWhatsappChannelRouting,
   canManageWhatsappChannels,
+  canProvisionWhatsappChannel,
   canReconnectWhatsapp,
+  createWhatsappProvisioningIdempotencyKey,
   createWhatsappChannelController,
   emptyWhatsappChannelState,
   formatConnectedPhoneForDisplay,
@@ -37,6 +39,7 @@ import type {
   WhatsappChannelHttpClient,
   WhatsappChannelListResponse,
   WhatsappChannelPairingCodeResponse,
+  WhatsappChannelProvisionResponse,
   WhatsappChannelQrResponse,
   WhatsappChannelRoutingResponse,
   WhatsappConnectionStatus,
@@ -66,6 +69,13 @@ function repository(
 ): WhatsappChannelRepository {
   return {
     async listWhatsappChannels() { return list() },
+    async provisionWhatsappChannel() {
+      return {
+        channelId: channel().id,
+        connectionStatus: 'WAITING_QR',
+        qrCode: 'data:image/png;base64,VEVTVEVTVEVTVEVTVEVTVEVTVEVTVEVU',
+      }
+    },
     async getWhatsappChannelConnection(channelId) {
       const current = list().channels.find((item) => item.id === channelId) ?? channel({ id: channelId })
       return {
@@ -157,6 +167,38 @@ test('lista canais usando o endpoint real e preserva o wrapper de limites', asyn
   assert.equal(result.channels.length, 2)
 })
 
+test('provisionamento usa POST no recurso real com body vazio e Idempotency-Key', async () => {
+  const idempotencyKey = '11111111-1111-4111-8111-111111111111'
+  const expected: WhatsappChannelProvisionResponse = {
+    channelId: channel().id,
+    connectionStatus: 'WAITING_QR',
+    qrCode: 'data:image/png;base64,VEVTVEVTVEVTVEVTVEVTVEVTVEVTVEVU',
+  }
+  const calls: Array<{
+    url: string
+    payload: unknown
+    config: { headers?: Record<string, string> } | undefined
+  }> = []
+  const http: WhatsappChannelHttpClient = {
+    async get<T>() { throw new Error('not expected') },
+    async post<T>(url, payload, config) {
+      calls.push({ url, payload, config })
+      return { data: expected as T }
+    },
+    async patch<T>() { throw new Error('not expected') },
+  }
+
+  const result = await createWhatsappChannelRepository(http)
+    .provisionWhatsappChannel(idempotencyKey)
+
+  assert.deepEqual(calls, [{
+    url: WHATSAPP_CHANNELS_ENDPOINT,
+    payload: {},
+    config: { headers: { 'Idempotency-Key': idempotencyKey } },
+  }])
+  assert.deepEqual(result, expected)
+})
+
 test('repositório sincroniza conexão usando GET /:id/connection', async () => {
   const current = channel()
   const expected: WhatsappChannelConnectionResponse = {
@@ -232,6 +274,131 @@ test('repositório solicita código de pareamento com POST e somente phone', asy
   }])
   assert.deepEqual(Object.keys(calls[0]!.payload as object), ['phone'])
   assert.deepEqual(result, expected)
+})
+
+test('CTA de provisionamento exige estado vazio, capacidade e role autorizada', () => {
+  const available = { limit: 1, used: 0, available: 1, channels: [] }
+  const unavailable = { limit: 0, used: 0, available: 0, channels: [] }
+
+  assert.equal(canProvisionWhatsappChannel(available, 'OWNER'), true)
+  assert.equal(canProvisionWhatsappChannel(available, 'MANAGER'), true)
+  assert.equal(canProvisionWhatsappChannel(unavailable, 'OWNER'), false)
+  assert.equal(canProvisionWhatsappChannel(available, 'OPERATOR'), false)
+  assert.equal(canProvisionWhatsappChannel(available, 'VIEWER'), false)
+  assert.equal(canProvisionWhatsappChannel(list(), 'OWNER'), false)
+})
+
+test('estado vazio renderiza CTA somente pela capacidade e permissão calculadas', () => {
+  const component = readFileSync(
+    new URL('../src/components/settings/WhatsappChannelsSettings.vue', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(component, /v-if="canProvision"/)
+  assert.match(component, /:disabled="state\.provisioning"/)
+  assert.match(component, /Conectar WhatsApp/)
+  assert.match(component, /canProvisionWhatsappChannel\(state\.data, props\.role\)/)
+  assert.doesNotMatch(component, /companyId/)
+})
+
+test('chave de provisionamento gerada é um UUID v4 aceito pelo backend', () => {
+  const key = createWhatsappProvisioningIdempotencyKey()
+
+  assert.match(key, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+})
+
+test('sucesso atualiza a lista e abre o modal com o QR retornado', async () => {
+  const created = channel({ connectionStatus: 'WAITING_QR', connectedPhone: null })
+  const qrCode = 'data:image/png;base64,VEVTVEVTVEVTVEVTVEVTVEVTVEVTVEVU'
+  const state = emptyWhatsappChannelState()
+  state.data = { limit: 1, used: 0, available: 1, channels: [] }
+  const scheduler = new FakeQrScheduler()
+  const keys: string[] = []
+  const controller = createWhatsappChannelController(repository({
+    async provisionWhatsappChannel(idempotencyKey) {
+      keys.push(idempotencyKey)
+      return { channelId: created.id, connectionStatus: 'WAITING_QR', qrCode }
+    },
+    async listWhatsappChannels() {
+      return { limit: 1, used: 1, available: 0, channels: [created] }
+    },
+    async getWhatsappChannelConnection(channelId) {
+      return {
+        channelId,
+        connectionStatus: 'WAITING_QR',
+        connectedPhone: null,
+        isActive: false,
+      }
+    },
+  }), state, scheduler, new FakeClipboard(), () => '11111111-1111-4111-8111-111111111111')
+
+  assert.equal(await controller.provisionWhatsappChannel('OWNER'), true)
+  assert.equal(state.data.channels.length, 1)
+  assert.equal(state.data.channels[0]?.id, created.id)
+  assert.equal(state.qrChannelId, created.id)
+  assert.equal(state.qrCode, qrCode)
+  assert.equal(scheduler.pendingCount, 1)
+  assert.deepEqual(keys, ['11111111-1111-4111-8111-111111111111'])
+})
+
+test('provisionamento pendente bloqueia duplo clique', async () => {
+  const created = channel({ connectionStatus: 'WAITING_QR' })
+  let resolveProvision: ((value: WhatsappChannelProvisionResponse) => void) | undefined
+  const pending = new Promise<WhatsappChannelProvisionResponse>((resolve) => {
+    resolveProvision = resolve
+  })
+  let provisionCalls = 0
+  const state = emptyWhatsappChannelState()
+  state.data = { limit: 1, used: 0, available: 1, channels: [] }
+  const controller = createWhatsappChannelController(repository({
+    async provisionWhatsappChannel() {
+      provisionCalls += 1
+      return pending
+    },
+    async listWhatsappChannels() {
+      return { limit: 1, used: 1, available: 0, channels: [created] }
+    },
+  }), state)
+
+  const first = controller.provisionWhatsappChannel('MANAGER')
+  assert.equal(await controller.provisionWhatsappChannel('MANAGER'), false)
+  assert.equal(provisionCalls, 1)
+
+  resolveProvision?.({ channelId: created.id, connectionStatus: 'WAITING_QR' })
+  assert.equal(await first, true)
+  assert.equal(state.provisioning, false)
+})
+
+test('erro preserva estado, libera nova tentativa e reutiliza a mesma chave idempotente', async () => {
+  const created = channel({ connectionStatus: 'WAITING_QR' })
+  const receivedKeys: string[] = []
+  let attempt = 0
+  const state = emptyWhatsappChannelState()
+  const initial = { limit: 1, used: 0, available: 1, channels: [] as WhatsappChannel[] }
+  state.data = initial
+  const controller = createWhatsappChannelController(repository({
+    async provisionWhatsappChannel(idempotencyKey) {
+      receivedKeys.push(idempotencyKey)
+      attempt += 1
+      if (attempt === 1) throw { response: { status: 503 } }
+      return { channelId: created.id, connectionStatus: 'WAITING_QR' }
+    },
+    async listWhatsappChannels() {
+      return { limit: 1, used: 1, available: 0, channels: [created] }
+    },
+  }), state, new FakeQrScheduler(), new FakeClipboard(), () => '11111111-1111-4111-8111-111111111111')
+
+  assert.equal(await controller.provisionWhatsappChannel('OWNER'), false)
+  assert.equal(state.data, initial)
+  assert.equal(state.provisioning, false)
+  assert.equal(state.provisioningError, 'Não foi possível conectar o WhatsApp. Tente novamente.')
+
+  assert.equal(await controller.provisionWhatsappChannel('OWNER'), true)
+  assert.deepEqual(receivedKeys, [
+    '11111111-1111-4111-8111-111111111111',
+    '11111111-1111-4111-8111-111111111111',
+  ])
+  assert.equal(state.provisioningError, '')
 })
 
 test('após a listagem cada canal é sincronizado individualmente', async () => {

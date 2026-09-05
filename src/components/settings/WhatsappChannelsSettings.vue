@@ -42,8 +42,26 @@
       <span class="state-icon" aria-hidden="true">
         <AppIcon name="whatsapp" :size="24" />
       </span>
-      <h3>Nenhum canal WhatsApp configurado.</h3>
-      <p>Quando um canal for disponibilizado, ele aparecerá aqui.</p>
+      <h3>{{ hasAvailableCapacity
+        ? 'Nenhum canal WhatsApp conectado.'
+        : 'Nenhum canal WhatsApp configurado.' }}</h3>
+      <p>{{ hasAvailableCapacity
+        ? 'Conecte o WhatsApp da sua empresa para começar a usar campanhas e automações.'
+        : 'Não há capacidade disponível para adicionar um canal no momento.' }}</p>
+      <p v-if="state.provisioningError" class="action-error" role="alert">
+        {{ state.provisioningError }}
+      </p>
+      <button
+        v-if="canProvision"
+        type="button"
+        class="btn-primary connect-button"
+        :disabled="state.provisioning"
+        @click="connectWhatsapp"
+      >
+        <span v-if="state.provisioning" class="button-spinner" aria-hidden="true" />
+        <AppIcon v-else name="whatsapp" :size="18" />
+        {{ state.provisioning ? 'Conectando...' : 'Conectar WhatsApp' }}
+      </button>
     </div>
 
     <template v-else-if="state.data">
@@ -188,6 +206,7 @@ import WhatsappQrModal from '@/components/settings/WhatsappQrModal.vue'
 import {
   canChangeWhatsappChannelRouting,
   canManageWhatsappChannels,
+  canProvisionWhatsappChannel,
   canReconnectWhatsapp,
   createWhatsappChannelController,
   emptyWhatsappChannelState,
@@ -216,6 +235,10 @@ const props = defineProps<{
 const state = reactive(emptyWhatsappChannelState())
 const controller = createWhatsappChannelController(whatsappChannelService, state)
 const canEdit = computed(() => canManageWhatsappChannels(props.role))
+const canProvision = computed(() => (
+  !props.profileLoading && canProvisionWhatsappChannel(state.data, props.role)
+))
+const hasAvailableCapacity = computed(() => (state.data?.available ?? 0) > 0)
 const reconnectDisabled = computed(() => (
   props.profileLoading || !canEdit.value || state.qrLoading || state.pairingLoading
 ))
@@ -239,6 +262,11 @@ const qrImageSource = computed(() => whatsappQrImageSource(state.qrCode))
 
 function loadChannels() {
   void controller.load()
+}
+
+function connectWhatsapp() {
+  if (!canProvision.value || state.provisioning) return
+  void controller.provisionWhatsappChannel(props.role)
 }
 
 function routingDisabled(channel: WhatsappChannel): boolean {
@@ -302,6 +330,8 @@ onUnmounted(controller.dispose)
 .state-icon { width: 48px; height: 48px; display: grid; place-items: center; color: var(--brand-light); background: var(--brand-subtle); border-radius: 13px; }
 .error-state .state-icon { color: var(--error); background: rgba(239,68,68,.1); }
 .channels-state .btn-primary { margin-top: 1rem; }
+.channels-state .action-error { max-width: 430px; margin-top: 1rem; color: var(--error); }
+.connect-button { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; }
 .spinner { width: 28px; height: 28px; border: 3px solid var(--card-border); border-top-color: var(--brand); border-radius: 50%; animation: spin .75s linear infinite; }
 .action-error { margin-top: 1.25rem; padding: .75rem .9rem; color: var(--error); background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); border-radius: 10px; font-size: .8rem; }
 .permission-note { margin-top: 1.1rem; color: var(--text-muted); font-size: .76rem; }
@@ -336,7 +366,7 @@ onUnmounted(controller.dispose)
 .routing-button { width: 100%; display: inline-flex; align-items: center; justify-content: center; }
 .routing-button.activate { color: var(--brand-light); background: var(--brand-subtle); border: 1px solid var(--brand-border); }
 .routing-button.deactivate { color: var(--text-secondary); background: transparent; border: 1px solid var(--card-border); }
-.status-button:disabled, .reconnect-button:disabled, .routing-button:disabled { cursor: not-allowed; opacity: .5; }
+.status-button:disabled, .reconnect-button:disabled, .routing-button:disabled, .connect-button:disabled { cursor: not-allowed; opacity: .5; }
 .btn-primary { padding: .65rem 1rem; color: var(--text-on-brand); background: var(--gradient-brand); border: none; border-radius: 10px; font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer; }
 .button-spinner { width: 14px; height: 14px; margin-right: .45rem; border: 2px solid var(--card-border); border-top-color: currentColor; border-radius: 50%; animation: spin .7s linear infinite; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
