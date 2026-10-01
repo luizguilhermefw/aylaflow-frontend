@@ -17,6 +17,11 @@ const router = createRouter({
       meta: { requiresGuest: true },
     },
     {
+      path: '/register/:publicId',
+      name: 'public-registration',
+      component: () => import('@/views/PublicRegistrationView.vue'),
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('@/views/Dashboard.vue'),
