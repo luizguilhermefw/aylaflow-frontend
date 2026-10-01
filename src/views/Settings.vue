@@ -125,6 +125,11 @@
       :role="currentRole"
       :profile-loading="profileLoading"
     />
+
+    <CustomerRegistrationLinkSettings
+      v-if="!profileLoading && canManageRegistrationLink && currentRole"
+      :role="currentRole"
+    />
   </AppLayout>
 
   <OptOutInstructionsConfirmModal
@@ -146,6 +151,7 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import OptOutInstructionsConfirmModal from '@/components/settings/OptOutInstructionsConfirmModal.vue'
 import WhatsappChannelsSettings from '@/components/settings/WhatsappChannelsSettings.vue'
+import CustomerRegistrationLinkSettings from '@/components/settings/CustomerRegistrationLinkSettings.vue'
 import { useAuthStore } from '@/store/auth.store'
 import { messagingPolicyService } from '@/services/messaging-policy.service'
 import {
@@ -158,6 +164,7 @@ import {
   themePreference,
   type ThemePreference,
 } from '@/features/theme/theme.logic'
+import { canManageCustomerRegistrationLink } from '@/features/customer-registration-link/customer-registration-link.logic'
 
 const authStore = useAuthStore()
 const state = reactive(emptyMessagingPolicyState())
@@ -166,6 +173,9 @@ const profileLoading = ref(true)
 
 const currentRole = computed(() => authStore.profile?.role)
 const canEdit = computed(() => canManageMessagingPolicy(currentRole.value))
+const canManageRegistrationLink = computed(() => (
+  canManageCustomerRegistrationLink(currentRole.value)
+))
 const toggleDisabled = computed(() => state.saving || profileLoading.value || !canEdit.value)
 
 function chooseTheme(theme: ThemePreference) {

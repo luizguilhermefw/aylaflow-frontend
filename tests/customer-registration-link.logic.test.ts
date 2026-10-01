@@ -1,0 +1,400 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import test from 'node:test'
+import {
+  canManageCustomerRegistrationLink,
+  createCustomerRegistrationLinkController,
+  customerRegistrationLinkActionError,
+  customerRegistrationLinkQrError,
+  emptyCustomerRegistrationLinkState,
+} from '../src/features/customer-registration-link/customer-registration-link.logic.ts'
+import type {
+  CustomerRegistrationLinkClipboard,
+  CustomerRegistrationLinkRepository,
+} from '../src/features/customer-registration-link/customer-registration-link.logic.ts'
+import {
+  CUSTOMER_REGISTRATION_LINK_ENDPOINT,
+  CUSTOMER_REGISTRATION_LINK_QR_ENDPOINT,
+  CUSTOMER_REGISTRATION_LINK_ROTATE_ENDPOINT,
+  CUSTOMER_REGISTRATION_LINK_STATUS_ENDPOINT,
+  createCustomerRegistrationLinkRepository,
+} from '../src/features/customer-registration-link/customer-registration-link.repository.ts'
+import type {
+  CustomerRegistrationLink,
+  CustomerRegistrationLinkHttpClient,
+  CustomerRegistrationQrCode,
+} from '../src/features/customer-registration-link/customer-registration-link.repository.ts'
+
+const serviceSource = readFileSync(
+  new URL('../src/services/customer-registration-link.service.ts', import.meta.url),
+  'utf8',
+)
+const componentSource = readFileSync(
+  new URL('../src/components/settings/CustomerRegistrationLinkSettings.vue', import.meta.url),
+  'utf8',
+)
+const settingsSource = readFileSync(new URL('../src/views/Settings.vue', import.meta.url), 'utf8')
+const modalSource = readFileSync(
+  new URL('../src/components/settings/CustomerRegistrationLinkRotateModal.vue', import.meta.url),
+  'utf8',
+)
+
+function link(overrides: Partial<CustomerRegistrationLink> = {}): CustomerRegistrationLink {
+  return {
+    publicId: 'A'.repeat(43),
+    active: true,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    publicPath: `/register/${'A'.repeat(43)}`,
+    ...overrides,
+  }
+}
+
+function qr(overrides: Partial<CustomerRegistrationQrCode> = {}): CustomerRegistrationQrCode {
+  return {
+    publicUrl: `https://app.example.com/register/${'A'.repeat(43)}`,
+    qrCodeDataUrl: 'data:image/png;base64,QUJDRA==',
+    ...overrides,
+  }
+}
+
+function repository(
+  overrides: Partial<CustomerRegistrationLinkRepository> = {},
+): CustomerRegistrationLinkRepository {
+  return {
+    async getLink() { return link() },
+    async createLink() { return link() },
+    async rotateLink() { return link({ publicId: 'B'.repeat(43), publicPath: `/register/${'B'.repeat(43)}` }) },
+    async updateStatus(active) { return link({ active }) },
+    async getQrCode() { return qr() },
+    ...overrides,
+  }
+}
+
+function responseError(status: number): { response: { status: number } } {
+  return { response: { status } }
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((done) => { resolve = done })
+  return { promise, resolve }
+}
+
+test('service autenticado reutiliza api.ts e não cria Axios paralelo', () => {
+  assert.match(serviceSource, /import api from ['"]\.\/api['"]/)
+  assert.doesNotMatch(serviceSource, /axios|axios\.create|baseURL/)
+})
+
+test('GET usa /customer-registration-link e preserva publicPath', async () => {
+  const expected = link()
+  const calls: string[] = []
+  const http: CustomerRegistrationLinkHttpClient = {
+    async get<T>(url) { calls.push(url); return { data: expected as T } },
+    async post<T>() { throw new Error('not expected') as T },
+    async patch<T>() { throw new Error('not expected') as T },
+  }
+  const result = await createCustomerRegistrationLinkRepository(http).getLink()
+  assert.deepEqual(calls, [CUSTOMER_REGISTRATION_LINK_ENDPOINT])
+  assert.equal(result.publicPath, expected.publicPath)
+})
+
+test('POST create usa endpoint real com body vazio', async () => {
+  const calls: Array<{ url: string; payload: unknown }> = []
+  const http: CustomerRegistrationLinkHttpClient = {
+    async get<T>() { throw new Error('not expected') as T },
+    async post<T>(url, payload) { calls.push({ url, payload }); return { data: link() as T } },
+    async patch<T>() { throw new Error('not expected') as T },
+  }
+  await createCustomerRegistrationLinkRepository(http).createLink()
+  assert.deepEqual(calls, [{ url: CUSTOMER_REGISTRATION_LINK_ENDPOINT, payload: {} }])
+})
+
+test('POST rotate usa endpoint real com body vazio', async () => {
+  const calls: Array<{ url: string; payload: unknown }> = []
+  const http: CustomerRegistrationLinkHttpClient = {
+    async get<T>() { throw new Error('not expected') as T },
+    async post<T>(url, payload) { calls.push({ url, payload }); return { data: link() as T } },
+    async patch<T>() { throw new Error('not expected') as T },
+  }
+  await createCustomerRegistrationLinkRepository(http).rotateLink()
+  assert.deepEqual(calls, [{ url: CUSTOMER_REGISTRATION_LINK_ROTATE_ENDPOINT, payload: {} }])
+})
+
+test('PATCH status envia somente active', async () => {
+  const calls: Array<{ url: string; payload: unknown }> = []
+  const http: CustomerRegistrationLinkHttpClient = {
+    async get<T>() { throw new Error('not expected') as T },
+    async post<T>() { throw new Error('not expected') as T },
+    async patch<T>(url, payload) { calls.push({ url, payload }); return { data: link({ active: false }) as T } },
+  }
+  await createCustomerRegistrationLinkRepository(http).updateStatus(false)
+  assert.deepEqual(calls, [{ url: CUSTOMER_REGISTRATION_LINK_STATUS_ENDPOINT, payload: { active: false } }])
+})
+
+test('QR usa GET /customer-registration-link/qr-code e preserva publicUrl', async () => {
+  const expected = qr()
+  const calls: string[] = []
+  const http: CustomerRegistrationLinkHttpClient = {
+    async get<T>(url) { calls.push(url); return { data: expected as T } },
+    async post<T>() { throw new Error('not expected') as T },
+    async patch<T>() { throw new Error('not expected') as T },
+  }
+  const result = await createCustomerRegistrationLinkRepository(http).getQrCode()
+  assert.deepEqual(calls, [CUSTOMER_REGISTRATION_LINK_QR_ENDPOINT])
+  assert.equal(result.publicUrl, expected.publicUrl)
+})
+
+test('frontend não monta URL absoluta usando origin, publicPath ou env', () => {
+  assert.doesNotMatch(componentSource, /window\.location|location\.origin|VITE_FRONTEND_URL/)
+  assert.doesNotMatch(componentSource, /publicPath/)
+  assert.match(componentSource, /state\.qrCode\.publicUrl/)
+})
+
+for (const role of ['OWNER', 'MANAGER']) {
+  test(`${role} pode gerenciar o cadastro público`, () => {
+    assert.equal(canManageCustomerRegistrationLink(role), true)
+  })
+}
+
+for (const role of ['OPERATOR', 'VIEWER', 'PLATFORM_ADMIN', 'SUPPORT', undefined]) {
+  test(`${String(role)} não recebe permissão de gerenciamento`, () => {
+    assert.equal(canManageCustomerRegistrationLink(role), false)
+  })
+}
+
+test('Settings aguarda perfil e não renderiza módulo para role não autorizada', () => {
+  assert.match(settingsSource, /v-if="!profileLoading && canManageRegistrationLink && currentRole"/)
+  assert.match(settingsSource, /canManageCustomerRegistrationLink\(currentRole\.value\)/)
+})
+
+test('GET 404 vira estado not-created, sem erro técnico', async () => {
+  const state = emptyCustomerRegistrationLinkState()
+  const controller = createCustomerRegistrationLinkController(repository({
+    async getLink() { throw responseError(404) },
+  }), state)
+  assert.equal(await controller.load('OWNER'), true)
+  assert.equal(state.view, 'not-created')
+  assert.equal(state.loadError, '')
+})
+
+test('role não autorizada não dispara GET', async () => {
+  let calls = 0
+  const controller = createCustomerRegistrationLinkController(repository({
+    async getLink() { calls += 1; return link() },
+  }))
+  assert.equal(await controller.load('VIEWER'), false)
+  assert.equal(calls, 0)
+})
+
+test('link existente carrega QR automaticamente sem destruir estado se QR falhar', async () => {
+  const state = emptyCustomerRegistrationLinkState()
+  const expectedLink = link()
+  const controller = createCustomerRegistrationLinkController(repository({
+    async getLink() { return expectedLink },
+    async getQrCode() { throw responseError(503) },
+  }), state)
+  assert.equal(await controller.load('MANAGER'), true)
+  assert.equal(state.view, 'ready')
+  assert.equal(state.link, expectedLink)
+  assert.equal(state.qrCode, null)
+  assert.match(state.qrError, /QR Code não pôde ser gerado/)
+})
+
+test('create 409 usa mensagem amigável e preserva estado vazio', async () => {
+  const state = emptyCustomerRegistrationLinkState()
+  state.view = 'not-created'
+  const controller = createCustomerRegistrationLinkController(repository({
+    async createLink() { throw responseError(409) },
+  }), state)
+  assert.equal(await controller.createLink('OWNER'), false)
+  assert.equal(state.view, 'not-created')
+  assert.equal(state.actionError, 'Já existe um link de cadastro para esta empresa.')
+})
+
+test('403 usa mensagem de permissão segura', () => {
+  assert.equal(
+    customerRegistrationLinkActionError(responseError(403)),
+    'Você não possui permissão para gerenciar o cadastro público.',
+  )
+})
+
+test('QR 503 usa mensagem específica e erro genérico não expõe API', () => {
+  assert.match(customerRegistrationLinkQrError(responseError(503)), /não pôde ser gerado/)
+  assert.equal(
+    customerRegistrationLinkActionError(new Error('Prisma SQL failed')),
+    'Não foi possível concluir a operação. Tente novamente.',
+  )
+})
+
+test('create salva resposta real, busca QR e não duplica item ou GET do link', async () => {
+  const state = emptyCustomerRegistrationLinkState()
+  state.view = 'not-created'
+  const created = link()
+  const calls: string[] = []
+  const controller = createCustomerRegistrationLinkController(repository({
+    async createLink() { calls.push('create'); return created },
+    async getQrCode() { calls.push('qr'); return qr() },
+  }), state)
+  assert.equal(await controller.createLink('OWNER'), true)
+  assert.deepEqual(calls, ['create', 'qr'])
+  assert.equal(state.link, created)
+  assert.equal(state.qrCode?.publicUrl, qr().publicUrl)
+  assert.equal(state.successMessage, 'Link criado.')
+})
+
+test('duplo create é bloqueado durante requisição pendente', async () => {
+  const pending = deferred<CustomerRegistrationLink>()
+  const state = emptyCustomerRegistrationLinkState()
+  state.view = 'not-created'
+  let calls = 0
+  const controller = createCustomerRegistrationLinkController(repository({
+    async createLink() { calls += 1; return pending.promise },
+  }), state)
+  const first = controller.createLink('OWNER')
+  assert.equal(await controller.createLink('OWNER'), false)
+  assert.equal(calls, 1)
+  pending.resolve(link())
+  await first
+})
+
+test('status não faz update otimista e usa integralmente a resposta real', async () => {
+  const pending = deferred<CustomerRegistrationLink>()
+  const original = link({ active: true })
+  const returned = link({ active: false, updatedAt: '2026-02-02T00:00:00.000Z' })
+  const state = emptyCustomerRegistrationLinkState()
+  state.view = 'ready'
+  state.link = original
+  const controller = createCustomerRegistrationLinkController(repository({
+    async updateStatus() { return pending.promise },
+  }), state)
+  const request = controller.updateStatus(false, 'OWNER')
+  assert.equal(state.link, original)
+  assert.equal(state.link.active, true)
+  pending.resolve(returned)
+  assert.equal(await request, true)
+  assert.equal(state.link, returned)
+})
+
+test('duplo status PATCH é bloqueado', async () => {
+  const pending = deferred<CustomerRegistrationLink>()
+  const state = emptyCustomerRegistrationLinkState()
+  state.view = 'ready'
+  state.link = link()
+  let calls = 0
+  const controller = createCustomerRegistrationLinkController(repository({
+    async updateStatus() { calls += 1; return pending.promise },
+  }), state)
+  const first = controller.updateStatus(false, 'MANAGER')
+  assert.equal(await controller.updateStatus(false, 'MANAGER'), false)
+  assert.equal(calls, 1)
+  pending.resolve(link({ active: false }))
+  await first
+})
+
+test('primeiro clique em rotação apenas abre confirmação explícita', () => {
+  const state = emptyCustomerRegistrationLinkState()
+  state.view = 'ready'
+  state.link = link()
+  const controller = createCustomerRegistrationLinkController(repository(), state)
+  assert.equal(controller.requestRotation('OWNER'), true)
+  assert.equal(state.rotationModalOpen, true)
+  assert.match(modalSource, /O link e o QR Code atuais deixarão de funcionar/)
+  assert.doesNotMatch(modalSource, /window\.confirm/)
+})
+
+test('rotate invalida QR antigo antes de aguardar resposta', async () => {
+  const pending = deferred<CustomerRegistrationLink>()
+  const state = emptyCustomerRegistrationLinkState()
+  state.view = 'ready'
+  state.link = link()
+  state.qrCode = qr()
+  state.rotationModalOpen = true
+  const controller = createCustomerRegistrationLinkController(repository({
+    async rotateLink() { return pending.promise },
+  }), state)
+  const rotation = controller.confirmRotation('OWNER')
+  assert.equal(state.qrCode, null)
+  pending.resolve(link({ publicId: 'B'.repeat(43) }))
+  await rotation
+})
+
+test('rotate aplica resposta real e carrega o novo QR na ordem correta', async () => {
+  const state = emptyCustomerRegistrationLinkState()
+  state.view = 'ready'
+  state.link = link()
+  state.qrCode = qr()
+  state.rotationModalOpen = true
+  const rotated = link({ publicId: 'B'.repeat(43), publicPath: `/register/${'B'.repeat(43)}` })
+  const freshQr = qr({ publicUrl: `https://app.example.com/register/${'B'.repeat(43)}` })
+  const calls: string[] = []
+  const controller = createCustomerRegistrationLinkController(repository({
+    async rotateLink() { calls.push('rotate'); return rotated },
+    async getQrCode() { calls.push('qr'); return freshQr },
+  }), state)
+  assert.equal(await controller.confirmRotation('MANAGER'), true)
+  assert.deepEqual(calls, ['rotate', 'qr'])
+  assert.equal(state.link, rotated)
+  assert.equal(state.qrCode, freshQr)
+  assert.equal(state.rotationModalOpen, false)
+})
+
+test('duplo rotate é bloqueado e cópia antiga permanece bloqueada', async () => {
+  const pending = deferred<CustomerRegistrationLink>()
+  const copied: string[] = []
+  const clipboard: CustomerRegistrationLinkClipboard = {
+    async writeText(value) { copied.push(value) },
+  }
+  const state = emptyCustomerRegistrationLinkState()
+  state.view = 'ready'
+  state.link = link()
+  state.qrCode = qr()
+  state.rotationModalOpen = true
+  let calls = 0
+  const controller = createCustomerRegistrationLinkController(repository({
+    async rotateLink() { calls += 1; return pending.promise },
+  }), state, clipboard)
+  const first = controller.confirmRotation('OWNER')
+  assert.equal(await controller.confirmRotation('OWNER'), false)
+  assert.equal(await controller.copyLink(), false)
+  assert.deepEqual(copied, [])
+  assert.equal(calls, 1)
+  pending.resolve(link({ publicId: 'B'.repeat(43) }))
+  await first
+})
+
+test('copy usa exatamente publicUrl retornada pelo QR', async () => {
+  const copied: string[] = []
+  const state = emptyCustomerRegistrationLinkState()
+  state.view = 'ready'
+  state.link = link()
+  state.qrCode = qr()
+  const controller = createCustomerRegistrationLinkController(repository(), state, {
+    async writeText(value) { copied.push(value) },
+  })
+  assert.equal(await controller.copyLink(), true)
+  assert.deepEqual(copied, [qr().publicUrl])
+  assert.equal(state.copyMessage, 'Link copiado.')
+})
+
+test('componente mantém QR visível no estado inativo e abre URL semanticamente', () => {
+  assert.match(componentSource, /v-else-if="state\.qrCode"/)
+  assert.match(componentSource, /<img :src="state\.qrCode\.qrCodeDataUrl"/)
+  assert.match(componentSource, /alt="QR Code para cadastro de clientes"/)
+  assert.match(componentSource, /target="_blank"/)
+  assert.match(componentSource, /rel="noopener noreferrer"/)
+})
+
+test('repository não modela identificadores de tenant nos bodies', () => {
+  const repositorySource = readFileSync(
+    new URL('../src/features/customer-registration-link/customer-registration-link.repository.ts', import.meta.url),
+    'utf8',
+  )
+  assert.doesNotMatch(repositorySource, /companyId|tenantId|userId/)
+})
+
+test('módulo não persiste nem registra dados do link ou QR', () => {
+  const source = `${componentSource}\n${serviceSource}`
+  assert.doesNotMatch(source, /localStorage|sessionStorage|console\.log/)
+  assert.doesNotMatch(source, /v-html|canvas/)
+})
