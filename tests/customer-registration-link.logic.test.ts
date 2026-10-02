@@ -24,6 +24,15 @@ import type {
   CustomerRegistrationLinkHttpClient,
   CustomerRegistrationQrCode,
 } from '../src/features/customer-registration-link/customer-registration-link.repository.ts'
+import {
+  CUSTOMER_REGISTRATION_QR_FILENAME,
+  createBrowserCustomerRegistrationQrExporter,
+  waitForQrImageAndPrint,
+} from '../src/features/customer-registration-link/customer-registration-link-export.logic.ts'
+import type {
+  CustomerRegistrationQrDownloadRuntime,
+  CustomerRegistrationQrExporter,
+} from '../src/features/customer-registration-link/customer-registration-link-export.logic.ts'
 
 const serviceSource = readFileSync(
   new URL('../src/services/customer-registration-link.service.ts', import.meta.url),
@@ -38,6 +47,11 @@ const modalSource = readFileSync(
   new URL('../src/components/settings/CustomerRegistrationLinkRotateModal.vue', import.meta.url),
   'utf8',
 )
+const exportSource = readFileSync(
+  new URL('../src/features/customer-registration-link/customer-registration-link-export.logic.ts', import.meta.url),
+  'utf8',
+)
+const packageSource = readFileSync(new URL('../package.json', import.meta.url), 'utf8')
 
 function link(overrides: Partial<CustomerRegistrationLink> = {}): CustomerRegistrationLink {
   return {
@@ -79,6 +93,44 @@ function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((done) => { resolve = done })
   return { promise, resolve }
+}
+
+class FakePrintableImage {
+  complete: boolean
+  naturalWidth: number
+  private listeners = new Map<string, Set<EventListener>>()
+
+  constructor(complete: boolean, naturalWidth: number) {
+    this.complete = complete
+    this.naturalWidth = naturalWidth
+  }
+
+  addEventListener(type: string, listener: EventListener): void {
+    const listeners = this.listeners.get(type) ?? new Set<EventListener>()
+    listeners.add(listener)
+    this.listeners.set(type, listeners)
+  }
+
+  removeEventListener(type: string, listener: EventListener): void {
+    this.listeners.get(type)?.delete(listener)
+  }
+
+  emit(type: 'load' | 'error'): void {
+    for (const listener of [...(this.listeners.get(type) ?? [])]) {
+      listener({ type } as Event)
+    }
+  }
+
+  listenerCount(type: 'load' | 'error'): number {
+    return this.listeners.get(type)?.size ?? 0
+  }
+}
+
+function printableWindow(calls: string[]): Window {
+  return {
+    focus() { calls.push('focus') },
+    print() { calls.push('print') },
+  } as unknown as Window
 }
 
 test('service autenticado reutiliza api.ts e não cria Axios paralelo', () => {
@@ -397,4 +449,300 @@ test('módulo não persiste nem registra dados do link ou QR', () => {
   const source = `${componentSource}\n${serviceSource}`
   assert.doesNotMatch(source, /localStorage|sessionStorage|console\.log/)
   assert.doesNotMatch(source, /v-html|canvas/)
+})
+
+test('download usa exatamente qrCodeDataUrl sem realizar request HTTP', async () => {
+  const downloadValues: string[] = []
+  let repositoryCalls = 0
+  const qrExporter: CustomerRegistrationQrExporter = {
+    async download(value) { downloadValues.push(value) },
+    async print() { throw new Error('not expected') },
+  }
+  const state = emptyCustomerRegistrationLinkState()
+  state.view = 'ready'
+  state.link = link()
+  state.qrCode = qr()
+  const controller = createCustomerRegistrationLinkController(repository({
+    async getQrCode() { repositoryCalls += 1; return qr() },
+  }), state, { async writeText() {} }, qrExporter)
+
+  assert.equal(await controller.downloadQrCode(), true)
+  assert.deepEqual(downloadValues, [qr().qrCodeDataUrl])
+  assert.equal(repositoryCalls, 0)
+  assert.equal(state.successMessage, 'QR Code baixado.')
+})
+
+test('download não acontece sem QR ou durante rotação', async () => {
+  let calls = 0
+  const exporter: CustomerRegistrationQrExporter = {
+    async download() { calls += 1 },
+    async print() { throw new Error('not expected') },
+  }
+  const state = emptyCustomerRegistrationLinkState()
+  const controller = createCustomerRegistrationLinkController(
+    repository(), state, { async writeText() {} }, exporter,
+  )
+  assert.equal(await controller.downloadQrCode(), false)
+  state.qrCode = qr()
+  state.rotating = true
+  assert.equal(await controller.downloadQrCode(), false)
+  assert.equal(calls, 0)
+})
+
+test('download converte PNG, usa nome estável e sempre revoga object URL', async () => {
+  const revoked: string[] = []
+  const appended: HTMLAnchorElement[] = []
+  const linkElement = {
+    href: '',
+    download: '',
+    click() {},
+    remove() {},
+  } as unknown as HTMLAnchorElement
+  const runtime: CustomerRegistrationQrDownloadRuntime = {
+    decodeBase64() { return 'ABC' },
+    createBlob() { return {} as Blob },
+    createObjectUrl() { return 'blob:qr-code' },
+    revokeObjectUrl(value) { revoked.push(value) },
+    createDownloadLink() { return linkElement },
+    appendDownloadLink(value) { appended.push(value) },
+  }
+
+  await createBrowserCustomerRegistrationQrExporter(runtime, {
+    openWindow() { throw new Error('not expected') },
+  }).download(qr().qrCodeDataUrl)
+
+  assert.deepEqual(appended, [linkElement])
+  assert.equal(linkElement.href, 'blob:qr-code')
+  assert.equal(linkElement.download, CUSTOMER_REGISTRATION_QR_FILENAME)
+  assert.equal(CUSTOMER_REGISTRATION_QR_FILENAME.includes(link().publicId), false)
+  assert.deepEqual(revoked, ['blob:qr-code'])
+})
+
+test('object URL também é revogado quando o clique falha', async () => {
+  const revoked: string[] = []
+  const runtime: CustomerRegistrationQrDownloadRuntime = {
+    decodeBase64() { return 'ABC' },
+    createBlob() { return {} as Blob },
+    createObjectUrl() { return 'blob:failed-download' },
+    revokeObjectUrl(value) { revoked.push(value) },
+    createDownloadLink() {
+      return {
+        href: '', download: '', click() { throw new Error('blocked') }, remove() {},
+      } as unknown as HTMLAnchorElement
+    },
+    appendDownloadLink() {},
+  }
+  const exporter = createBrowserCustomerRegistrationQrExporter(runtime, {
+    openWindow() { throw new Error('not expected') },
+  })
+
+  await assert.rejects(exporter.download(qr().qrCodeDataUrl))
+  assert.deepEqual(revoked, ['blob:failed-download'])
+})
+
+test('falha de download gera feedback amigável', async () => {
+  const state = emptyCustomerRegistrationLinkState()
+  state.qrCode = qr()
+  const controller = createCustomerRegistrationLinkController(repository(), state, {
+    async writeText() {},
+  }, {
+    async download() { throw new Error('browser internals') },
+    async print() {},
+  })
+  assert.equal(await controller.downloadQrCode(), false)
+  assert.equal(state.actionError, 'Não foi possível baixar o QR Code.')
+  assert.doesNotMatch(state.actionError, /browser internals/)
+})
+
+test('impressão usa exatamente publicUrl e qrCodeDataUrl sem publicPath', async () => {
+  const printValues: Array<{ publicUrl: string; qrCodeDataUrl: string }> = []
+  const state = emptyCustomerRegistrationLinkState()
+  state.link = link({ publicPath: '/must-not-be-used' })
+  state.qrCode = qr()
+  const controller = createCustomerRegistrationLinkController(repository(), state, {
+    async writeText() {},
+  }, {
+    async download() { throw new Error('not expected') },
+    async print(publicUrl, qrCodeDataUrl) { printValues.push({ publicUrl, qrCodeDataUrl }) },
+  })
+
+  assert.equal(await controller.printQrCode(), true)
+  assert.deepEqual(printValues, [{
+    publicUrl: qr().publicUrl,
+    qrCodeDataUrl: qr().qrCodeDataUrl,
+  }])
+  assert.equal(JSON.stringify(printValues).includes('/must-not-be-used'), false)
+  assert.equal(state.successMessage, 'Impressão aberta.')
+})
+
+test('impressão não acontece sem QR ou durante rotação', async () => {
+  let calls = 0
+  const state = emptyCustomerRegistrationLinkState()
+  const controller = createCustomerRegistrationLinkController(repository(), state, {
+    async writeText() {},
+  }, {
+    async download() {},
+    async print() { calls += 1 },
+  })
+  assert.equal(await controller.printQrCode(), false)
+  state.qrCode = qr()
+  state.rotating = true
+  assert.equal(await controller.printQrCode(), false)
+  assert.equal(calls, 0)
+})
+
+test('link inativo continua permitindo download e impressão', async () => {
+  const operations: string[] = []
+  const state = emptyCustomerRegistrationLinkState()
+  state.link = link({ active: false })
+  state.qrCode = qr()
+  const controller = createCustomerRegistrationLinkController(repository(), state, {
+    async writeText() {},
+  }, {
+    async download() { operations.push('download') },
+    async print() { operations.push('print') },
+  })
+  assert.equal(await controller.downloadQrCode(), true)
+  assert.equal(await controller.printQrCode(), true)
+  assert.deepEqual(operations, ['download', 'print'])
+})
+
+test('falha de impressão gera feedback amigável', async () => {
+  const state = emptyCustomerRegistrationLinkState()
+  state.qrCode = qr()
+  const controller = createCustomerRegistrationLinkController(repository(), state, {
+    async writeText() {},
+  }, {
+    async download() {},
+    async print() { throw new Error('popup details') },
+  })
+  assert.equal(await controller.printQrCode(), false)
+  assert.equal(state.actionError, 'Não foi possível abrir a impressão.')
+  assert.doesNotMatch(state.actionError, /popup details/)
+})
+
+test('material de impressão é construído com DOM seguro e sem dashboard', () => {
+  assert.match(exportSource, /\.textContent = text/)
+  assert.match(exportSource, /image\.src = qrCodeDataUrl/)
+  assert.doesNotMatch(exportSource, /document\.write|innerHTML|v-html/)
+  assert.doesNotMatch(exportSource, /sidebar|Settings|status-row/)
+  assert.match(exportSource, /Cadastro de clientes/)
+  assert.match(exportSource, /AylaFlow/)
+})
+
+test('ações de exportação aparecem somente dentro do estado com QR', () => {
+  const qrBlock = componentSource.match(/<div v-else-if="state\.qrCode"[\s\S]*?<\/div>\s*<\/div>/)?.[0]
+  assert.ok(qrBlock)
+  assert.match(qrBlock, /Baixar QR Code/)
+  assert.match(qrBlock, /Imprimir/)
+  assert.match(componentSource, /Na janela de impressão você também pode salvar como PDF\./)
+})
+
+test('exportação não usa storage, HTTP, biblioteca QR ou biblioteca PDF', () => {
+  assert.doesNotMatch(exportSource, /localStorage|sessionStorage|axios|fetch\(|XMLHttpRequest/)
+  assert.doesNotMatch(
+    exportSource,
+    /from ['"](?:qrcode|qr-code-styling|jspdf|pdfkit|pdfmake)['"]/i,
+  )
+  assert.doesNotMatch(packageSource, /"jspdf"|"pdfkit"|"pdfmake"|"qrcode"/i)
+})
+
+test('impressão permanece pendente enquanto a imagem ainda não carregou', async () => {
+  const image = new FakePrintableImage(false, 0)
+  const calls: string[] = []
+  let settled = false
+
+  const printing = waitForQrImageAndPrint(
+    image as unknown as HTMLImageElement,
+    printableWindow(calls),
+  ).finally(() => { settled = true })
+
+  await Promise.resolve()
+  assert.equal(settled, false)
+  assert.deepEqual(calls, [])
+  assert.equal(image.listenerCount('load'), 1)
+  assert.equal(image.listenerCount('error'), 1)
+
+  image.naturalWidth = 320
+  image.emit('load')
+  await printing
+})
+
+test('evento load executa focus e print antes de resolver e limpa listeners', async () => {
+  const image = new FakePrintableImage(false, 0)
+  const calls: string[] = []
+  const printing = waitForQrImageAndPrint(
+    image as unknown as HTMLImageElement,
+    printableWindow(calls),
+  )
+
+  image.naturalWidth = 320
+  image.emit('load')
+  await printing
+
+  assert.deepEqual(calls, ['focus', 'print'])
+  assert.equal(image.listenerCount('load'), 0)
+  assert.equal(image.listenerCount('error'), 0)
+})
+
+test('evento error rejeita a impressão e limpa o listener oposto', async () => {
+  const image = new FakePrintableImage(false, 0)
+  const calls: string[] = []
+  const printing = waitForQrImageAndPrint(
+    image as unknown as HTMLImageElement,
+    printableWindow(calls),
+  )
+
+  image.emit('error')
+  await assert.rejects(printing)
+
+  assert.deepEqual(calls, [])
+  assert.equal(image.listenerCount('load'), 0)
+  assert.equal(image.listenerCount('error'), 0)
+})
+
+test('imagem já carregada abre impressão imediatamente', async () => {
+  const image = new FakePrintableImage(true, 320)
+  const calls: string[] = []
+
+  await waitForQrImageAndPrint(
+    image as unknown as HTMLImageElement,
+    printableWindow(calls),
+  )
+
+  assert.deepEqual(calls, ['focus', 'print'])
+  assert.equal(image.listenerCount('load'), 0)
+  assert.equal(image.listenerCount('error'), 0)
+})
+
+test('imagem completa porém quebrada rejeita sem abrir impressão', async () => {
+  const image = new FakePrintableImage(true, 0)
+  const calls: string[] = []
+
+  await assert.rejects(waitForQrImageAndPrint(
+    image as unknown as HTMLImageElement,
+    printableWindow(calls),
+  ))
+
+  assert.deepEqual(calls, [])
+})
+
+test('controller só confirma impressão depois que exporter resolve', async () => {
+  const pending = deferred<void>()
+  const state = emptyCustomerRegistrationLinkState()
+  state.qrCode = qr()
+  const controller = createCustomerRegistrationLinkController(repository(), state, {
+    async writeText() {},
+  }, {
+    async download() {},
+    async print() { return pending.promise },
+  })
+
+  const printing = controller.printQrCode()
+  await Promise.resolve()
+  assert.equal(state.successMessage, '')
+
+  pending.resolve(undefined)
+  assert.equal(await printing, true)
+  assert.equal(state.successMessage, 'Impressão aberta.')
 })

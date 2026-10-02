@@ -2,6 +2,10 @@ import type {
   CustomerRegistrationLink,
   CustomerRegistrationQrCode,
 } from './customer-registration-link.repository'
+import {
+  createBrowserCustomerRegistrationQrExporter,
+  type CustomerRegistrationQrExporter,
+} from './customer-registration-link-export.logic.ts'
 
 export interface CustomerRegistrationLinkRepository {
   getLink(): Promise<CustomerRegistrationLink>
@@ -96,6 +100,7 @@ export function createCustomerRegistrationLinkController(
   repository: CustomerRegistrationLinkRepository,
   state: CustomerRegistrationLinkState = emptyCustomerRegistrationLinkState(),
   clipboard: CustomerRegistrationLinkClipboard = browserClipboard,
+  qrExporter: CustomerRegistrationQrExporter = createBrowserCustomerRegistrationQrExporter(),
 ) {
   let qrGeneration = 0
 
@@ -272,6 +277,40 @@ export function createCustomerRegistrationLinkController(
     }
   }
 
+  async function downloadQrCode(): Promise<boolean> {
+    if (!state.qrCode || state.rotating) return false
+    const qrCodeDataUrl = state.qrCode.qrCodeDataUrl
+    state.actionError = ''
+    state.successMessage = ''
+    try {
+      await qrExporter.download(qrCodeDataUrl)
+      if (state.qrCode?.qrCodeDataUrl === qrCodeDataUrl) {
+        state.successMessage = 'QR Code baixado.'
+      }
+      return true
+    } catch {
+      state.actionError = 'Não foi possível baixar o QR Code.'
+      return false
+    }
+  }
+
+  async function printQrCode(): Promise<boolean> {
+    if (!state.qrCode || state.rotating) return false
+    const { publicUrl, qrCodeDataUrl } = state.qrCode
+    state.actionError = ''
+    state.successMessage = ''
+    try {
+      await qrExporter.print(publicUrl, qrCodeDataUrl)
+      if (state.qrCode?.publicUrl === publicUrl) {
+        state.successMessage = 'Impressão aberta.'
+      }
+      return true
+    } catch {
+      state.actionError = 'Não foi possível abrir a impressão.'
+      return false
+    }
+  }
+
   return {
     state,
     load,
@@ -282,5 +321,7 @@ export function createCustomerRegistrationLinkController(
     confirmRotation,
     updateStatus,
     copyLink,
+    downloadQrCode,
+    printQrCode,
   }
 }

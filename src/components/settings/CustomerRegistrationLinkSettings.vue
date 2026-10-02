@@ -106,7 +106,24 @@
             >
               Abrir cadastro
             </a>
+            <button
+              type="button"
+              class="btn-secondary"
+              :disabled="state.rotating"
+              @click="downloadQrCode"
+            >
+              Baixar QR Code
+            </button>
+            <button
+              type="button"
+              class="btn-secondary"
+              :disabled="state.rotating"
+              @click="printQrCode"
+            >
+              Imprimir
+            </button>
           </div>
+          <p class="print-hint">Na janela de impressão você também pode salvar como PDF.</p>
           <p v-if="state.copyMessage" class="copy-feedback" role="status" aria-live="polite">
             {{ state.copyMessage }}
           </p>
@@ -194,6 +211,14 @@ function copyLink() {
   void controller.copyLink()
 }
 
+function downloadQrCode() {
+  void controller.downloadQrCode()
+}
+
+function printQrCode() {
+  void controller.printQrCode()
+}
+
 onMounted(load)
 </script>
 
@@ -225,6 +250,7 @@ onMounted(load)
 .public-url { margin-top: .7rem; display: block; color: var(--brand-light); font-size: .82rem; overflow-wrap: anywhere; }
 .link-actions { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: .6rem; }
 .copy-feedback { margin-top: .65rem; color: var(--success); font-size: .76rem; }
+.print-hint { margin-top: .65rem; color: var(--text-muted); font-size: .73rem; }
 .qr-figure img { width: 100%; max-width: 200px; height: auto; margin: .75rem auto 0; display: block; border-radius: 8px; }
 .sensitive-actions { margin-top: 1rem; padding-top: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-top: 1px solid var(--card-border); }
 .sensitive-actions strong { color: var(--text-primary); font-size: .82rem; }
