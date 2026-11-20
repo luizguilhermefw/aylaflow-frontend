@@ -1,13 +1,14 @@
 <template>
-  <AuthLayout>
+  <main class="login-page">
+    <LoginExperience />
+    <section class="login-form-panel" aria-labelledby="login-title">
     <div class="login-card">
       <div class="login-header">
-        <div class="logo">
-          <AylaFlowLogo class="auth-brand-logo" />
-        </div>
-        <p class="subtitle">Acesse sua conta para continuar</p>
+        <h1 id="login-title">Acesse sua conta</h1>
+        <p class="subtitle">Continue de onde parou.</p>
       </div>
 
+      <RouterLink to="/" class="home-link">Voltar ao início</RouterLink>
       <form class="login-form" @submit.prevent="handleLogin" novalidate>
         <div class="field">
           <label for="email">E-mail</label>
@@ -73,13 +74,13 @@
         </div>
       </form>
     </div>
-  </AuthLayout>
+    </section>
+  </main>
 </template>
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import AuthLayout from '@/layouts/AuthLayout.vue'
-import AylaFlowLogo from '@/components/ui/AylaFlowLogo.vue'
+import LoginExperience from '@/components/landing/LoginExperience.vue'
 import { useAuthStore } from '@/store/auth.store'
 import { AxiosError } from 'axios'
 import { RouterLink } from 'vue-router'
@@ -145,33 +146,20 @@ async function handleLogin() {
 </script>
 
 <style scoped>
-.login-card {
-  width: 100%;
-  max-width: 420px;
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 20px;
-  padding: 2.5rem 2rem;
-  box-shadow: var(--card-shadow);
-  backdrop-filter: blur(20px);
-  animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
+.login-page { min-height: 100dvh; display: grid; grid-template-columns: 55% 45%; }
+.login-form-panel { display: flex; align-items: center; justify-content: center; padding: 48px 28px; background: linear-gradient(180deg, var(--bg-surface), var(--bg-page)); }
+.login-card { width: min(100%, 420px); }
+.login-header h1 { font-size: 1.8rem; margin-bottom: 10px; letter-spacing: -.03em; }
+.home-link { display: inline-block; margin-bottom: 24px; color: var(--brand-light); font-size: .8rem; text-underline-offset: 4px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--brand-light); outline-offset: 4px; }
+@media(max-width: 820px) { .login-page { grid-template-columns: 1fr; } .login-form-panel { padding: 32px 24px 48px; } }
+@media(prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none; transition: none; } }
 
 .login-header {
   text-align: center;
   margin-bottom: 2rem;
 }
 
-.logo {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 0.75rem;
-}
-
-.auth-brand-logo {
-  --aylaflow-logo-width: 210px;
-}
 
 .subtitle {
   color: var(--text-muted);
@@ -328,10 +316,6 @@ input:disabled {
   to { transform: rotate(360deg); }
 }
 
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 
 .fade-enter-active,
 .fade-leave-active {

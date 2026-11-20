@@ -44,9 +44,9 @@ test('logo possui tratamento específico para contraste no tema escuro', () => {
   assert.match(globalStyles, /--brand-logo-blend-mode: screen/)
 })
 
-test('Login, Register e AppLayout usam a logo oficial sem AppIcon brand', () => {
+test('painel do Login, Register e AppLayout usam a logo oficial sem AppIcon brand', () => {
   const identityFiles = [
-    '../src/views/Login.vue',
+    '../src/components/landing/LoginExperience.vue',
     '../src/views/Register.vue',
     '../src/layouts/AppLayout.vue',
   ]
@@ -56,4 +56,16 @@ test('Login, Register e AppLayout usam a logo oficial sem AppIcon brand', () => 
     assert.match(source, /<AylaFlowLogo/)
     assert.doesNotMatch(source, /<AppIcon[^>]+name="brand"/)
   }
+})
+
+test('login integra painel visual isolado e mantém links de conta e retorno', () => {
+  const login = readFileSync(new URL('../src/views/Login.vue', import.meta.url), 'utf8')
+  const experience = readFileSync(new URL('../src/components/landing/LoginExperience.vue', import.meta.url), 'utf8')
+  assert.match(login, /<LoginExperience/)
+  assert.match(login, /to="\/register"/)
+  assert.match(login, /to="\/"/)
+  assert.match(login, /@submit.prevent="handleLogin"/)
+  assert.doesNotMatch(experience, /authStore|authService|axios/)
+  assert.match(experience, /if \(motion\?\.matches \|\| !desktop\?\.matches\) return/)
+  assert.match(experience, /onUnmounted\(\(\) => \{\s+clearInterval\(timer\)/)
 })

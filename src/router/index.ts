@@ -4,8 +4,15 @@ import { useAuthStore } from '@/store/auth.store'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    { path: '/privacidade', name: 'privacy', component: () => import('@/views/Legal.vue') },
+    { path: '/termos', name: 'terms', component: () => import('@/views/Legal.vue') },
     {
       path: '/',
+      name: 'home',
+      component: () => import('@/views/Home.vue'),
+    },
+    {
+      path: '/login',
       name: 'login',
       component: () => import('@/views/Login.vue'),
       meta: { requiresGuest: true },
