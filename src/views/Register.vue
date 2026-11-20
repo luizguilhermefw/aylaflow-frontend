@@ -151,7 +151,7 @@
 
         <div class="footer-links">
           <span class="text-muted">Já tem uma conta?</span>
-          <RouterLink to="/" class="link">Fazer login</RouterLink>
+          <RouterLink to="/login" class="link">Fazer login</RouterLink>
         </div>
       </form>
     </div>
